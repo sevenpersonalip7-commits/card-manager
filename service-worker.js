@@ -1,11 +1,11 @@
 const CACHE_NAME = 'card-manager-v4';
 const urlsToCache = [
-  '/card-manager/',
-  '/card-manager/index.html',
-  '/card-manager/style.css',
-  '/card-manager/app.js',
-  '/card-manager/supabase.js',
-  '/card-manager/manifest.json'
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './supabase.js',
+  './manifest.json'
 ];
 
 self.addEventListener('install', event => {

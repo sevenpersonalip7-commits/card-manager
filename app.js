@@ -8,6 +8,7 @@ let transactions = [];
 let bankAccounts = [];
 let recurringPayments = [];
 let recurringLogs = [];
+let cardBillingLogs = [];
 
 // ==================== ナビ設定 ====================
 const ALL_NAV_ITEMS = [
@@ -93,30 +94,13 @@ async function checkAuth() {
 
 
 function renderLogin() {
-  document.getElementById('app').innerHTML = `
-    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f0f1a;padding:24px">
-      <div style="width:100%;max-width:360px">
-        <div style="text-align:center;margin-bottom:32px">
-          <div style="font-size:48px;margin-bottom:12px">💳</div>
-          <h1 style="font-size:24px;font-weight:500;color:#6ec6cf">カード管理</h1>
-        </div>
-        <div style="background:#1a1a2e;border-radius:16px;padding:24px">
-          <div class="form-group">
-            <label class="form-label">メールアドレス</label>
-            <input class="form-input" id="login-email" type="email" placeholder="example@email.com">
-          </div>
-          <div class="form-group">
-            <label class="form-label">パスワード</label>
-            <input class="form-input" id="login-password" type="password" placeholder="パスワード">
-          </div>
-          <div id="login-error" style="color:#ff6b6b;font-size:13px;margin-bottom:12px;display:none">
-            メールアドレスまたはパスワードが違います
-          </div>
-          <button class="btn btn-primary btn-full" onclick="login()">ログイン</button>
-        </div>
-      </div>
-    </div>
-  `;
+  const app = document.getElementById('app');
+  const template = document.getElementById('tmpl-login');
+  // appの中身を一旦クリア
+  app.replaceChildren();
+  // テンプレートの中身を複製して#appに追加
+  const clone = template.content.cloneNode(true);
+  app.appendChild(clone);
 }
 
 async function login() {
@@ -136,7 +120,7 @@ async function login() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/card-manager/service-worker.js')
+    navigator.serviceWorker.register('./service-worker.js')
       .then(reg => {
         // 新バージョンが見つかったら自動で更新
         reg.addEventListener('updatefound', () => {
@@ -186,6 +170,17 @@ async function loadData() {
       .from('recurring_payment_logs').select('*').order('processed_at', { ascending: false });
     if (logsError) throw logsError;
 
+    // ↓ カード引き落としログの取得を追加
+    const { data: cLogs, error: cLogsError } = await window._db
+      .from('card_billing_logs')
+      .select('*');
+    
+    if (!cLogsError && cLogs) {
+      cardBillingLogs = cLogs;
+    } else {
+      cardBillingLogs = [];
+    }
+
     recurringPayments = recurringData || [];
     recurringLogs = logsData || [];
     
@@ -197,71 +192,90 @@ async function loadData() {
   }
 }
 
+
+
+
+
+
+
 // ==================== レンダリング ====================
 function renderApp() {
-  document.getElementById('app').innerHTML = `
-<div class="header">
-      <button onclick="toggleDrawer()" style="background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:4px 8px">
-        <i class="ph-bold ph-list"></i>
-      </button>
-      <h1>💳 カード管理</h1>
-      <div style="width:40px"></div>
-    </div>
-    <!-- オーバーレイ -->
-    <div id="drawer-overlay" onclick="toggleDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:150"></div>
-    <!-- ドロワー -->
-    <div id="drawer" style="position:fixed;top:0;left:-280px;width:280px;height:100vh;background:#1a1a2e;z-index:200;transition:left 0.3s ease;padding:0;display:flex;flex-direction:column">
-      <div style="padding:24px 20px;border-bottom:1px solid #2a2a3e">
-        <div style="font-size:13px;color:var(--gray-400);margin-bottom:4px">ログイン中</div>
-        <div id="drawer-email" style="font-size:14px;color:var(--gray-800);font-weight:500"></div>
-      </div>
-<nav style="flex:1;padding:16px 0;overflow-y:auto">
-        ${navSettings.drawerNav.map(n => {
-          const item = ALL_DRAWER_ITEMS.find(i => i.id === n.id);
-          if (!item) return '';
-          return `
-            <button onclick="navigateDrawer('${item.id}')" class="drawer-item ${currentPage === item.id ? 'drawer-active' : ''}">
-              <i class="ph-bold ${item.icon}"></i>${item.label}
-            </button>
-          `;
-        }).join('')}
-        <button onclick="navigateDrawer('settings')" class="drawer-item ${currentPage === 'settings' ? 'drawer-active' : ''}">
-          <i class="ph-bold ph-gear"></i>ナビ設定
-        </button>
-      </nav>
-      
-      <div id="last-updated" style="font-size:11px;color:var(--gray-400);text-align:center;margin-bottom:6px"></div>
-        <button onclick="checkUpdate()" class="btn btn-ghost btn-full" style="margin-bottom:8px">
-          <i class="ph-bold ph-arrow-clockwise"></i>　更新を確認
-        </button>
-        
-        <button onclick="logout()" class="btn btn-danger btn-full">
-          <i class="ph-bold ph-sign-out"></i>　ログアウト
-        </button>
-      </div>
-        </div>
-    <div class="main" id="main-content"></div>
-<nav class="bottom-nav">
-      ${navSettings.bottomNav
-        .filter(n => n.visible)
-        .map(n => {
-          const item = ALL_NAV_ITEMS.find(i => i.id === n.id);
-          if (!item) return '';
-          return `
-            <button onclick="navigate('${item.id}')" class="${currentPage === item.id ? 'active' : ''}">
-              <i class="ph-bold ${item.icon}"></i>${item.label}
-            </button>
-          `;
-        }).join('')}
+  const app = document.getElementById('app');
+  app.replaceChildren();
 
-<!-- 削除済み一覧（頻繁に使用しないためコメントアウト）
-        <button onclick="navigateDrawer('deleted')" class="drawer-item ${currentPage === 'deleted' ? 'drawer-active' : ''}">
-          <i class="ph-bold ph-trash"></i>削除済み一覧
-        </button>
-        -->
-    </nav>
-    ${currentPage !== 'cards' ? `<button class="fab" onclick="openAddTransaction()"><i class="ph-bold ph-plus"></i></button>` : ''}
-  `;
+  // 1. 全体フレームの展開
+  const appTemplate = document.getElementById('tmpl-app');
+  const appClone = appTemplate.content.cloneNode(true);
+
+  // コンテナ要素を取得
+  const drawerNav = appClone.getElementById('drawer-nav');
+  const bottomNav = appClone.getElementById('bottom-nav');
+  const fabContainer = appClone.getElementById('fab-container');
+
+  // テンプレート参照
+  const drawerItemTmpl = document.getElementById('tmpl-drawer-item');
+  const bottomNavTmpl = document.getElementById('tmpl-bottom-nav-item');
+  const fabTmpl = document.getElementById('tmpl-fab');
+
+  // 2. ドロワーメニューの生成
+  navSettings.drawerNav.forEach(n => {
+    const item = ALL_DRAWER_ITEMS.find(i => i.id === n.id);
+    if (!item) return;
+
+    const clone = drawerItemTmpl.content.cloneNode(true);
+    const btn = clone.querySelector('button');
+    const icon = clone.querySelector('i');
+    const label = clone.querySelector('.item-label');
+
+    btn.setAttribute('onclick', `navigateDrawer('${item.id}')`);
+    if (currentPage === item.id) btn.classList.add('drawer-active');
+    icon.classList.add(item.icon);
+    label.textContent = item.label;
+
+    drawerNav.appendChild(clone);
+  });
+
+  // 「ナビ設定」ボタンの追加（ドロワー末尾固定）
+  const settingsClone = drawerItemTmpl.content.cloneNode(true);
+  const settingsBtn = settingsClone.querySelector('button');
+  const settingsIcon = settingsClone.querySelector('i');
+  const settingsLabel = settingsClone.querySelector('.item-label');
+
+  settingsBtn.setAttribute('onclick', "navigateDrawer('settings')");
+  if (currentPage === 'settings') settingsBtn.classList.add('drawer-active');
+  settingsIcon.classList.add('ph-gear');
+  settingsLabel.textContent = 'ナビ設定';
+
+  drawerNav.appendChild(settingsClone);
+
+  // 3. ボトムナビの生成
+  navSettings.bottomNav
+    .filter(n => n.visible)
+    .forEach(n => {
+      const item = ALL_NAV_ITEMS.find(i => i.id === n.id);
+      if (!item) return;
+
+      const clone = bottomNavTmpl.content.cloneNode(true);
+      const btn = clone.querySelector('button');
+      const icon = clone.querySelector('i');
+      const label = clone.querySelector('.item-label');
+
+      btn.setAttribute('onclick', `navigate('${item.id}')`);
+      if (currentPage === item.id) btn.classList.add('active');
+      icon.classList.add(item.icon);
+      label.textContent = item.label;
+
+      bottomNav.appendChild(clone);
+    });
+
+  // 4. FAB（＋ボタン）の表示制御
+  if (currentPage !== 'cards') {
+    const fabClone = fabTmpl.content.cloneNode(true);
+    fabContainer.appendChild(fabClone);
+  }
+
+  // 5. 最後に画面に差し込んで各ページの中身を描画
+  app.appendChild(appClone);
   renderPage();
 }
 
@@ -272,18 +286,38 @@ function navigate(page) {
 
 function renderPage() {
   const el = document.getElementById('main-content');
-if (currentPage === 'home') el.innerHTML = renderHome();
-  else if (currentPage === 'monthly') el.innerHTML = renderMonthly();
-  else if (currentPage === 'reserved') el.innerHTML = renderReserved();
-  else if (currentPage === 'cards') el.innerHTML = renderCards();
-else if (currentPage === 'banks') el.innerHTML = renderBanks();
-  else if (currentPage === 'recurring') el.innerHTML = renderRecurring();
-  else if (currentPage === 'bookmarks') el.innerHTML = renderBookmarks();
-  else if (currentPage === 'search') el.innerHTML = renderSearch();
-  else if (currentPage === 'category-detail') el.innerHTML = renderCategoryDetail();
-else if (currentPage === 'deleted') el.innerHTML = renderDeleted();
-  else if (currentPage === 'settings') el.innerHTML = renderNavSettings();
+  if (!el) return;
+
+  // 画面を描画する関数を決定
+  let content = '';
+  if (currentPage === 'home') content = renderHome();
+  else if (currentPage === 'monthly') content = renderMonthly();
+  else if (currentPage === 'reserved') content = renderReserved();
+  else if (currentPage === 'cards') content = renderCards();
+  else if (currentPage === 'banks') content = renderBanks();
+  else if (currentPage === 'recurring') content = renderRecurring();
+  else if (currentPage === 'bookmarks') content = renderBookmarks();
+  else if (currentPage === 'search') content = renderSearch();
+  else if (currentPage === 'category-detail') content = renderCategoryDetail();
+  else if (currentPage === 'deleted') content = renderDeleted();
+  else if (currentPage === 'settings') content = renderNavSettings();
+
+
+
+  // 表示の反映（DOM要素か文字列かで処理を分岐）
+  if (content instanceof Node) {
+    // renderHome のように DOM要素（Node）が返ってきた場合
+    el.replaceChildren(content);
+  } else {
+    // まだテンプレート文字列で返ってくる画面の場合
+    el.innerHTML = content;
+  }
 }
+
+
+
+
+
 
 // ==================== 日付ユーティリティ ====================
 function formatDate(date) {
@@ -324,6 +358,15 @@ function formatAmount(num) {
   return Number(num).toLocaleString('ja-JP') + '円';
 }
 
+
+
+
+
+
+
+
+
+
 // ==================== 定期支払いユーティリティ ====================
 const FREQUENCY_LABELS = {
   monthly: '毎月',
@@ -363,8 +406,56 @@ function isRecurringProcessed(paymentId, year, month) {
   );
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ==================== ホーム画面のソート状態管理 ====================
+let homeSortKey = 'amount';   // 'amount' | 'dueDate' | 'name' | 'count'
+let homeSortOrder = 'desc';   // 'asc' | 'desc'
+
+function handleHomeSortChange(val) {
+  // val が引き渡されなかった場合（引数なし呼び出し）のフォールバック処理付き
+  if (val) {
+    homeSortKey = val;
+  } else {
+    const select = document.getElementById('home-sort-key');
+    if (select) homeSortKey = select.value;
+  }
+  renderPage();
+}
+
+function toggleHomeSortOrder() {
+  homeSortOrder = homeSortOrder === 'asc' ? 'desc' : 'asc';
+  renderPage();
+}
+
+
+
 // ==================== ホーム画面 ====================
 function renderHome() {
+  // === 1. データ計算 ===
   const targetTx = transactions.filter(tx => {
     const card = cards.find(c => c.id === tx.card_id);
     if (!card) return false;
@@ -376,78 +467,173 @@ function renderHome() {
   const confirmedCount = targetTx.filter(tx => tx.is_confirmed).length;
   const unconfirmedCount = targetTx.filter(tx => !tx.is_confirmed).length;
 
-const cardGroups = cards.map(card => {
+  let cardGroups = cards.map(card => {
     const cardTx = targetTx
       .filter(tx => tx.card_id === card.id)
       .sort((a, b) => new Date(b.used_date) - new Date(a.used_date));
     const cardTotal = cardTx.reduce((sum, tx) => sum + tx.amount, 0);
 
-    // その月の引き落とし予定日を計算
     const billingLastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
     const billingDay = Math.min(card.billing_day, billingLastDay);
-    const billingDate = `${currentMonth.getMonth() + 1}/${String(billingDay).padStart(2, '0')}`;
+    
+    const rawBillingDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), billingDay);
+    const billingDate = `${currentMonth.getMonth() + 1}/${billingDay}`;
 
-    return { card, transactions: cardTx, total: cardTotal, billingDate };
+    return { 
+      card, 
+      transactions: cardTx, 
+      total: cardTotal, 
+      billingDate,
+      rawBillingDate
+    };
   }).filter(g => g.transactions.length > 0);
 
-return `
-<div>
-    <div class="month-nav">
-      <button onclick="changeMonth(-1)">‹</button>
-      <span class="month-label" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)" style="padding:12px 24px;cursor:grab">${formatYearMonth(currentMonth)}</span>
-      <button onclick="changeMonth(1)">›</button>
-    </div>
-        <div class="card">
-      <div class="summary-amount">${formatAmount(totalAmount)}</div>
-      <div class="summary-sub">確定 ${confirmedCount}件 ／ 未確定 ${unconfirmedCount}件</div>
-    </div>
-    ${cardGroups.length > 0 ? `
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px" onclick="expandAllCards()">
-        <i class="ph-bold ph-arrows-out"></i>　全て開く
-      </button>
-      <button class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px" onclick="collapseAllCards()">
-        <i class="ph-bold ph-arrows-in"></i>　全て閉じる
-      </button>
-    </div>
-    ` : ''}
-    ${targetTx.length > 0 ? renderCategoryChart(targetTx) : ''}
-    ${cardGroups.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">データがありません</div>' :
-      cardGroups.map(g => {
-const isCollapsed = collapsedCards[g.card.id] !== undefined ? collapsedCards[g.card.id] : true;
-        return `
-          <div class="card" style="width:100%;box-sizing:border-box;padding:0;overflow:hidden">
-            <div class="card-total-row" onclick="toggleCardGroup('${g.card.id}')" style="cursor:pointer">
-              <div style="display:flex;align-items:center;gap:8px">
-                <i class="ph-bold ${isCollapsed ? 'ph-caret-right' : 'ph-caret-down'}" style="font-size:14px;opacity:0.8"></i>
-                <span class="card-total-label">🏦 ${g.card.name}　${g.billingDate}引き落とし</span>
-              </div>
-              <span class="card-total-amount">${formatAmount(g.total)}</span>
-              </div>
-            <div id="card-group-${g.card.id}" style="display:${isCollapsed ? 'none' : 'block'}">
-              <div class="card-transactions" style="padding:0 16px">
-              ${g.transactions.map(tx => `
-                <div class="transaction-item" onclick="openEditTransaction('${tx.id}')">
-                  <div class="transaction-info">
-                    <div class="shop">${tx.shop || '（購入先未設定）'}
-                      ${tx.is_confirmed ? '<span class="badge badge-confirmed">確定</span>' : '<span class="badge badge-reserved">未確定</span>'}
-                    </div>
-                    <div class="date">${formatDate(tx.used_date)}　${tx.category || ''}</div>
-                    ${tx.detail ? `<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail}</div>` : ''}
-                  </div>
-                  <div class="transaction-amount">${formatAmount(tx.amount)}</div>
-                </div>
-              `).join('')}
-              </div>
-              <div style="padding:8px 16px;text-align:right;font-size:12px;color:var(--gray-400)">
-                ${g.transactions.length}件
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('')
+  // === ソート処理 ===
+  cardGroups.sort((a, b) => {
+    let valA, valB;
+    switch (homeSortKey) {
+      case 'amount':
+        valA = a.total;
+        valB = b.total;
+        break;
+      case 'dueDate':
+        valA = a.rawBillingDate.getTime();
+        valB = b.rawBillingDate.getTime();
+        break;
+      case 'name':
+        valA = a.card.name;
+        valB = b.card.name;
+        if (homeSortOrder === 'asc') return valA.localeCompare(valB, 'ja');
+        return valB.localeCompare(valA, 'ja');
+      case 'count':
+        valA = a.transactions.length;
+        valB = b.transactions.length;
+        break;
+      default:
+        valA = a.total;
+        valB = b.total;
     }
-  `;
+
+    if (homeSortOrder === 'asc') {
+      return valA > valB ? 1 : valA < valB ? -1 : 0;
+    } else {
+      return valA < valB ? 1 : valA > valB ? -1 : 0;
+    }
+  });
+
+  // === 2. DOMの組み立て ===
+  const tmplHome = document.getElementById('tmpl-home');
+  const clone = tmplHome.content.cloneNode(true);
+
+  // ヘッダー・サマリー部
+  clone.querySelector('.month-label').textContent = formatYearMonth(currentMonth);
+  clone.querySelector('.summary-amount').textContent = formatAmount(totalAmount);
+  clone.querySelector('.summary-sub').textContent = `確定 ${confirmedCount}件 ／ 未確定 ${unconfirmedCount}件`;
+
+  // 一括開閉・ソートUIの制御と状態同期
+  if (cardGroups.length > 0) {
+    const toggleButtons = clone.querySelector('.toggle-buttons');
+    toggleButtons.style.display = 'flex';
+
+    // セレクトボックスの選択状態を現在の設定に合わせる
+    const sortSelect = clone.querySelector('#home-sort-key');
+    if (sortSelect) {
+      sortSelect.value = homeSortKey;
+    }
+
+    // 昇順/降順ボタンの表示制御
+    const sortIcon = clone.querySelector('#home-sort-order-icon');
+    const sortText = clone.querySelector('#home-sort-order-text');
+    if (sortIcon && sortText) {
+      if (homeSortOrder === 'asc') {
+        sortIcon.className = 'ph-bold ph-sort-ascending';
+        sortText.textContent = '昇順';
+      } else {
+        sortIcon.className = 'ph-bold ph-sort-descending';
+        sortText.textContent = '降順';
+      }
+    }
+  }
+
+  // カテゴリチャートの描画
+  if (targetTx.length > 0) {
+    const chartArea = clone.querySelector('.chart-container');
+    const chartNode = renderCategoryChart(targetTx);
+    if (chartNode) {
+      chartArea.appendChild(chartNode);
+    }
+  }
+
+  // カードグループ・明細の描画
+  if (cardGroups.length === 0) {
+    clone.querySelector('.no-data').style.display = 'block';
+  } else {
+    const groupsContainer = clone.querySelector('.card-groups-container');
+    const tmplGroup = document.getElementById('tmpl-card-group');
+    const tmplTx = document.getElementById('tmpl-transaction-item');
+
+    cardGroups.forEach(g => {
+      const groupClone = tmplGroup.content.cloneNode(true);
+      const isCollapsed = collapsedCards[g.card.id] !== undefined ? collapsedCards[g.card.id] : true;
+
+      // カードヘッダー設定
+      const totalRow = groupClone.querySelector('.card-total-row');
+      const icon = groupClone.querySelector('.toggle-icon');
+      const groupBody = groupClone.querySelector('.card-group-body');
+
+      totalRow.setAttribute('onclick', `toggleCardGroup('${g.card.id}')`);
+      icon.classList.add(isCollapsed ? 'ph-caret-right' : 'ph-caret-down');
+
+// 1. カード名（枠を超える長さを自動で「…」に省略）
+      groupClone.querySelector('.card-name').textContent = g.card.name;
+
+      // 2. 日付（中央寄せ列へ）
+      groupClone.querySelector('.card-date').textContent = g.billingDate;
+
+      // 3. 件数（中央寄せ列へ）
+      groupClone.querySelector('.card-count').textContent = `(${g.transactions.length}件)`;
+
+      // 4. 合計金額（右寄せ列へ）
+      groupClone.querySelector('.card-total-amount').textContent = formatAmount(g.total);
+
+      // 折りたたみ制御
+      groupBody.id = `card-group-${g.card.id}`;
+      groupBody.style.display = isCollapsed ? 'none' : 'block';
+
+      const txCountEl = groupClone.querySelector('.tx-count');
+      if (txCountEl) txCountEl.style.display = 'none';
+
+      // 明細ループ処理
+      const txContainer = groupClone.querySelector('.card-transactions');
+      g.transactions.forEach(tx => {
+        const txClone = tmplTx.content.cloneNode(true);
+        const itemEl = txClone.querySelector('.transaction-item');
+
+        itemEl.setAttribute('onclick', `openEditTransaction('${tx.id}')`);
+        txClone.querySelector('.shop-name').textContent = tx.shop || '（購入先未設定）';
+
+        const badge = txClone.querySelector('.badge');
+        badge.className = `badge ${tx.is_confirmed ? 'badge-confirmed' : 'badge-reserved'}`;
+        badge.textContent = tx.is_confirmed ? '確定' : '未確定';
+
+        txClone.querySelector('.date-category').textContent = `${formatDate(tx.used_date)} ${tx.category || ''}`;
+
+        if (tx.detail) {
+          const detailEl = txClone.querySelector('.tx-detail');
+          detailEl.textContent = tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail;
+          detailEl.style.display = 'block';
+        }
+
+        txClone.querySelector('.transaction-amount').textContent = formatAmount(tx.amount);
+
+        txContainer.appendChild(txClone);
+      });
+
+      groupsContainer.appendChild(groupClone);
+    });
+  }
+
+  return clone;
 }
 
 function changeMonth(diff) {
@@ -475,6 +661,18 @@ function toggleCategoryChart() {
   renderPage();
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
 // ==================== カテゴリグラフ ====================
 const CHART_COLORS = [
   '#6ec6cf', '#a78bfa', '#f472b6', '#fb923c',
@@ -483,6 +681,7 @@ const CHART_COLORS = [
 ];
 
 function renderCategoryChart(targetTx) {
+  // === 1. 集計・ソート処理（元のロジックと100%同じ） ===
   const categoryMap = {};
   targetTx.forEach(tx => {
     const key = tx.category || '未分類';
@@ -494,48 +693,53 @@ function renderCategoryChart(targetTx) {
     .sort((a, b) => b[1] - a[1]);
 
   const total = sorted.reduce((sum, [, v]) => sum + v, 0);
-  if (total === 0) return '';
+  if (total === 0) return null; // 合計0なら描画しない
 
-  const bars = sorted.map(([label, value], i) => {
+  // === 2. DOMの組み立て ===
+  const tmplChart = document.getElementById('tmpl-category-chart');
+  const chartClone = tmplChart.content.cloneNode(true);
+
+  // ヘッダー（合計金額・トグルアイコン状態）の設定
+  const icon = chartClone.querySelector('.toggle-icon');
+  icon.classList.add(isCategoryChartCollapsed ? 'ph-caret-right' : 'ph-caret-down');
+  
+  chartClone.querySelector('.chart-total-amount').textContent = formatAmount(total);
+
+  // 開閉（非表示）状態の設定
+  const chartBody = chartClone.getElementById('category-chart-body');
+  chartBody.style.display = isCategoryChartCollapsed ? 'none' : 'block';
+
+  // 各カテゴリバーの生成
+  const barsContainer = chartClone.querySelector('.bars-container');
+  const tmplBar = document.getElementById('tmpl-category-bar');
+
+  sorted.forEach(([label, value], i) => {
+    const barClone = tmplBar.content.cloneNode(true);
     const ratio = value / total;
     const percent = Math.round(ratio * 100);
     const color = CHART_COLORS[i % CHART_COLORS.length];
 
-    return `
-      <div class="legend-item" onclick="openCategoryDetail('${encodeURIComponent(label)}')">
-        <div style="flex:1">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <div class="legend-left">
-              <div class="legend-dot" style="background:${color}"></div>
-              <span class="legend-label">${label}</span>
-            </div>
-            <div style="text-align:right">
-              <span class="legend-amount">${formatAmount(value)}</span>
-              <span class="legend-percent" style="margin-left:6px">${percent}%</span>
-            </div>
-          </div>
-          <div style="background:var(--gray-200);border-radius:99px;height:6px;overflow:hidden">
-            <div style="background:${color};width:${percent}%;height:100%;border-radius:99px;transition:width 0.3s ease"></div>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
+    // 行全体のクリックイベント
+    const itemEl = barClone.querySelector('.legend-item');
+    itemEl.setAttribute('onclick', `openCategoryDetail('${encodeURIComponent(label)}')`);
 
-  return `
-    <div class="card" style="padding:0;overflow:hidden">
-      <div onclick="toggleCategoryChart()" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;background:var(--gray-200)">
-        <div style="display:flex;align-items:center;gap:8px">
-          <i class="ph-bold ${isCategoryChartCollapsed ? 'ph-caret-right' : 'ph-caret-down'}" style="color:var(--primary);font-size:16px"></i>
-          <span style="font-size:14px;font-weight:500">カテゴリ別集計</span>
-        </div>
-        <span style="font-size:13px;color:var(--gray-400)">${formatAmount(total)}</span>
-      </div>
-      <div id="category-chart-body" style="display:${isCategoryChartCollapsed ? 'none' : 'block'};padding:16px">
-        ${bars}
-      </div>
-    </div>
-  `;
+    // ドットの色
+    barClone.querySelector('.legend-dot').style.background = color;
+
+    // テキスト・金額・パーセント
+    barClone.querySelector('.legend-label').textContent = label;
+    barClone.querySelector('.legend-amount').textContent = formatAmount(value);
+    barClone.querySelector('.legend-percent').textContent = `${percent}%`;
+
+    // プログレスバーの長さと色
+    const progressFill = barClone.querySelector('.progress-bar-fill');
+    progressFill.style.background = color;
+    progressFill.style.width = `${percent}%`;
+
+    barsContainer.appendChild(barClone);
+  });
+
+  return chartClone;
 }
 
 function openCategoryDetail(encodedCategory) {
@@ -548,6 +752,7 @@ function openCategoryDetail(encodedCategory) {
 function renderCategoryDetail() {
   const { category, month } = window._categoryDetail;
 
+  // === 1. データ抽出・集計（元のロジックと100%同じ） ===
   const targetTx = transactions.filter(tx => {
     const card = cards.find(c => c.id === tx.card_id);
     if (!card) return false;
@@ -558,41 +763,84 @@ function renderCategoryDetail() {
 
   const total = targetTx.reduce((sum, tx) => sum + tx.amount, 0);
 
-  return `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-      <button onclick="navigate('home')" style="background:none;border:none;color:var(--primary);font-size:24px;cursor:pointer;padding:4px">
-        <i class="ph-bold ph-arrow-left"></i>
-      </button>
-      <div>
-        <div style="font-size:16px;font-weight:500">${category}</div>
-        <div style="font-size:12px;color:var(--gray-400)">${formatYearMonth(month)}</div>
-      </div>
-      <div style="margin-left:auto;font-size:18px;font-weight:500;color:var(--primary)">${formatAmount(total)}</div>
-    </div>
-    ${targetTx.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">データがありません</div>' :
-      targetTx.map(tx => {
-        const card = cards.find(c => c.id === tx.card_id);
-        return `
-          <div class="card transaction-item" onclick="openEditTransaction('${tx.id}')">
-            <div class="transaction-info">
-              <div class="shop">${tx.shop || '（購入先未設定）'}
-                ${tx.is_confirmed ? '<span class="badge badge-confirmed">確定</span>' : '<span class="badge badge-reserved">未確定</span>'}
-              </div>
-              <div class="date">${formatDate(tx.used_date)}　${card ? card.name : ''}</div>
-              ${tx.detail ? `<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail}</div>` : ''}
-            </div>
-            <div class="transaction-amount">${formatAmount(tx.amount)}</div>
-          </div>
-        `;
-      }).join('')
-    }
-  `;
+  // === 2. DOMの組み立て ===
+  const tmplDetail = document.getElementById('tmpl-category-detail');
+  const clone = tmplDetail.content.cloneNode(true);
+
+  // ヘッダー情報のセット
+  clone.querySelector('.category-name').textContent = category;
+  clone.querySelector('.target-month').textContent = formatYearMonth(month);
+  clone.querySelector('.category-total').textContent = formatAmount(total);
+
+  // 明細リストの描画
+  if (targetTx.length === 0) {
+    clone.querySelector('.no-data').style.display = 'block';
+  } else {
+    const listContainer = clone.querySelector('.tx-list-container');
+    const tmplTx = document.getElementById('tmpl-transaction-item');
+
+    targetTx.forEach(tx => {
+      const card = cards.find(c => c.id === tx.card_id);
+      const txClone = tmplTx.content.cloneNode(true);
+      const itemEl = txClone.querySelector('.transaction-item');
+
+      // この画面ではカード（.card）クラスが必要なため追加
+      itemEl.classList.add('card');
+      itemEl.setAttribute('onclick', `openEditTransaction('${tx.id}')`);
+
+      // 購入先
+      txClone.querySelector('.shop-name').textContent = tx.shop || '（購入先未設定）';
+
+      // 確定/未確定バッジ
+      const badge = txClone.querySelector('.badge');
+      badge.className = `badge ${tx.is_confirmed ? 'badge-confirmed' : 'badge-reserved'}`;
+      badge.textContent = tx.is_confirmed ? '確定' : '未確定';
+
+      // 日付・カード名
+      const cardName = card ? card.name : '';
+      txClone.querySelector('.date-category').textContent = `${formatDate(tx.used_date)} ${cardName}`;
+
+      // 詳細（30文字超の省略処理）
+      if (tx.detail) {
+        const detailEl = txClone.querySelector('.tx-detail');
+        detailEl.textContent = tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail;
+        detailEl.style.display = 'block';
+      }
+
+      // 金額
+      txClone.querySelector('.transaction-amount').textContent = formatAmount(tx.amount);
+
+      listContainer.appendChild(txClone);
+    });
+  }
+
+  return clone;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ==================== 月別一覧 ====================
 let collapsedYears = {};
 
 function renderMonthly() {
+  // === 1. 集計・グループ化処理（元のロジックと100%同じ） ===
   const monthMap = {};
   transactions.forEach(tx => {
     const card = cards.find(c => c.id === tx.card_id);
@@ -622,47 +870,57 @@ function renderMonthly() {
     yearTotals[year] = yearMap[year].reduce((sum, [, val]) => sum + val.total, 0);
   });
 
-  return `
-      <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">月別引き落とし一覧</h2>
-    ${years.length > 0 ? `
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px" onclick="expandAllYears()">
-        <i class="ph-bold ph-arrows-out"></i>　全て開く
-      </button>
-      <button class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px" onclick="collapseAllYears()">
-        <i class="ph-bold ph-arrows-in"></i>　全て閉じる
-      </button>
-    </div>
-    ` : ''}
-    ${years.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">データがありません</div>' :
-      years.map(year => {
-        const isCurrentYear = parseInt(year) === currentYear;
-        const isCollapsed = collapsedYears[year] !== undefined ? collapsedYears[year] : !isCurrentYear;
+  // === 2. DOMの組み立て ===
+  const tmplMonthly = document.getElementById('tmpl-monthly');
+  const clone = tmplMonthly.content.cloneNode(true);
 
-        return `
-          <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
-            <!-- 年ヘッダー -->
-            <div onclick="toggleYear(${year})" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;background:var(--gray-200)">
-              <div style="display:flex;align-items:center;gap:8px">
-                <i class="ph-bold ${isCollapsed ? 'ph-caret-right' : 'ph-caret-down'}" style="color:var(--primary);font-size:16px"></i>
-                <span style="font-size:16px;font-weight:500">${year}年</span>
-              </div>
-              <span style="font-size:15px;font-weight:500;color:var(--primary)">${formatAmount(yearTotals[year])}</span>
-            </div>
-            <!-- 月別リスト -->
-            <div id="year-${year}" style="display:${isCollapsed ? 'none' : 'block'}">
-              ${yearMap[year].map(([key, val]) => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--gray-200);cursor:pointer" onclick="goToMonth('${key}')">
-                  <span style="font-size:15px">${val.date.getMonth()+1}月 引き落とし</span>
-                  <span style="font-size:15px;font-weight:500">${formatAmount(val.total)}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }).join('')
-    }
-  `;
+  if (years.length === 0) {
+    clone.querySelector('.no-data').style.display = 'block';
+  } else {
+    // 一括開閉ボタンを表示
+    clone.querySelector('.toggle-buttons').style.display = 'flex';
+
+    const yearsContainer = clone.querySelector('.years-container');
+    const tmplYear = document.getElementById('tmpl-year-group');
+    const tmplMonth = document.getElementById('tmpl-month-item');
+
+    years.forEach(year => {
+      const yearClone = tmplYear.content.cloneNode(true);
+
+      const isCurrentYear = parseInt(year) === currentYear;
+      const isCollapsed = collapsedYears[year] !== undefined ? collapsedYears[year] : !isCurrentYear;
+
+      // 年ヘッダーの設定
+      const header = yearClone.querySelector('.year-header');
+      const icon = yearClone.querySelector('.toggle-icon');
+      
+      header.setAttribute('onclick', `toggleYear(${year})`);
+      icon.classList.add(isCollapsed ? 'ph-caret-right' : 'ph-caret-down');
+      yearClone.querySelector('.year-label').textContent = `${year}年`;
+      yearClone.querySelector('.year-total-amount').textContent = formatAmount(yearTotals[year]);
+
+      // 月別リスト格納部の設定
+      const yearBody = yearClone.querySelector('.year-body');
+      yearBody.id = `year-${year}`;
+      yearBody.style.display = isCollapsed ? 'none' : 'block';
+
+      // 各月の1行パーツを生成
+      yearMap[year].forEach(([key, val]) => {
+        const monthClone = tmplMonth.content.cloneNode(true);
+        const itemEl = monthClone.querySelector('.month-item');
+
+        itemEl.setAttribute('onclick', `goToMonth('${key}')`);
+        monthClone.querySelector('.month-label').textContent = `${val.date.getMonth() + 1}月 引き落とし`;
+        monthClone.querySelector('.month-amount').textContent = formatAmount(val.total);
+
+        yearBody.appendChild(monthClone);
+      });
+
+      yearsContainer.appendChild(yearClone);
+    });
+  }
+
+  return clone;
 }
 
 function toggleYear(year) {
@@ -674,22 +932,35 @@ function toggleYear(year) {
   renderPage();
 }
 
+// ==================== 年別グループの一括開閉 ====================
+
+// 全ての年を開く
 function expandAllYears() {
-  const years = Object.keys(yearMap || {});
-  document.querySelectorAll('[id^="year-"]').forEach(el => {
-    el.style.display = 'block';
-    const year = el.id.replace('year-', '');
-    collapsedYears[year] = false;
+  // transactions（または表示対象データ）から存在する「年」を動的に取得
+  // データが存在しない場合でも DOM 上の year-XXXX 要素から網羅
+  const allYears = new Set([
+    ...transactions.map(tx => new Date(tx.used_date).getFullYear()),
+    ...Array.from(document.querySelectorAll('[id^="year-"]')).map(el => el.id.replace('year-', ''))
+  ]);
+
+  allYears.forEach(year => {
+    if (year) collapsedYears[year] = false;
   });
+
   renderPage();
 }
 
+// 全ての年を閉じる
 function collapseAllYears() {
-  document.querySelectorAll('[id^="year-"]').forEach(el => {
-    el.style.display = 'none';
-    const year = el.id.replace('year-', '');
-    collapsedYears[year] = true;
+  const allYears = new Set([
+    ...transactions.map(tx => new Date(tx.used_date).getFullYear()),
+    ...Array.from(document.querySelectorAll('[id^="year-"]')).map(el => el.id.replace('year-', ''))
+  ]);
+
+  allYears.forEach(year => {
+    if (year) collapsedYears[year] = true;
   });
+
   renderPage();
 }
 
@@ -699,89 +970,191 @@ function goToMonth(key) {
   navigate('home');
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ==================== 予約管理 ====================
-let expandedDetails = {};
 
 function renderReserved() {
   let reserved = transactions.filter(tx => !tx.is_confirmed);
   reserved.sort((a,b) => new Date(a.used_date) - new Date(b.used_date));
 
-  return `
-    <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">予約・未確定管理</h2>
-    ${reserved.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">未確定データはありません</div>' :
-      reserved.map(tx => {
-        const card = cards.find(c => c.id === tx.card_id);
-        const isExpanded = expandedDetails[tx.id] || false;
-        const detailLines = (tx.detail || '').split('\n');
-        const isLong = detailLines.length > 2 || (tx.detail || '').length > 60;
-        const previewDetail = detailLines.slice(0, 2).join('\n');
+  const tmplReserved = document.getElementById('tmpl-reserved');
+  const clone = tmplReserved.content.cloneNode(true);
 
-        return `
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;cursor:pointer" onclick="openEditTransaction('${tx.id}')">
-              <div>
-                <div class="shop">${tx.shop || '（購入先未設定）'}</div>
-                <div class="date" style="font-size:12px;color:var(--gray-400);margin-top:2px">${formatDate(tx.used_date)}　${card ? card.name : ''}　${tx.category || ''}</div>
-              </div>
-              <div class="transaction-amount" style="white-space:nowrap;margin-left:8px">${formatAmount(tx.amount)}</div>
-            </div>
-            ${tx.detail ? `
-              <div style="border-top:1px solid var(--gray-200);padding-top:8px;margin-top:4px">
-                <div style="font-size:13px;color:var(--gray-600);white-space:pre-wrap">${isExpanded ? tx.detail : previewDetail}${!isExpanded && isLong ? '…' : ''}</div>
-                ${isLong ? `
-                  <div onclick="toggleDetail('${tx.id}')" style="font-size:12px;color:var(--primary);margin-top:6px;cursor:pointer;text-align:right">
-                    ${isExpanded ? '<i class="ph-bold ph-caret-up"></i> 閉じる' : '<i class="ph-bold ph-caret-down"></i> すべて表示'}
-                  </div>
-                ` : ''}
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }).join('')
-    }
-  `;
+  if (reserved.length === 0) {
+    clone.querySelector('.no-data').style.display = 'block';
+  } else {
+    const listContainer = clone.querySelector('.reserved-list-container');
+    const tmplItem = document.getElementById('tmpl-reserved-item');
+
+    reserved.forEach(tx => {
+      const card = cards.find(c => c.id === tx.card_id);
+      const itemClone = tmplItem.content.cloneNode(true);
+
+      const header = itemClone.querySelector('.reserved-header');
+      header.setAttribute('onclick', `openEditTransaction('${tx.id}')`);
+
+      itemClone.querySelector('.shop').textContent = tx.shop || '（購入先未設定）';
+      
+      const cardName = card ? card.name : '';
+      const categoryName = tx.category || '';
+      itemClone.querySelector('.date-card-category').textContent = `${formatDate(tx.used_date)} ${cardName} ${categoryName}`;
+      itemClone.querySelector('.transaction-amount').textContent = formatAmount(tx.amount);
+
+      // 詳細テキストの処理
+      if (tx.detail) {
+        const detailSection = itemClone.querySelector('.detail-section');
+        const detailTextEl = itemClone.querySelector('.detail-text');
+        const toggleBtn = itemClone.querySelector('.toggle-detail-btn');
+
+        detailSection.style.display = 'block';
+
+        // 原文をそのままセット（改行含めそのまま入る）
+        detailTextEl.textContent = tx.detail;
+
+        // 改行が2行以上ある、または文字数が40文字以上の場合は開閉ボタンを表示
+        const lines = tx.detail.split('\n').length;
+        const isLong = lines > 2 || tx.detail.length > 40;
+
+        if (isLong) {
+          toggleBtn.style.display = 'block';
+          toggleBtn.setAttribute('onclick', 'toggleReservedDetail(this, event)');
+        }
+      }
+
+      listContainer.appendChild(itemClone);
+    });
+  }
+
+  return clone;
 }
 
-function toggleDetail(txId) {
-  expandedDetails[txId] = !expandedDetails[txId];
-  renderPage();
+// 詳細テキストの開閉（改行を保持したまま、行数制限のみを解除/適用）
+function toggleReservedDetail(btnEl, event) {
+  if (event) event.stopPropagation();
+
+  const detailSection = btnEl.closest('.detail-section');
+  const detailText = detailSection.querySelector('.detail-text');
+  const toggleLabel = btnEl.querySelector('.toggle-label');
+
+  // 現在2行制限されている（閉じている）か判定
+  const isCollapsed = detailText.style.webkitLineClamp === '2' || detailText.style.webkitLineClamp === '';
+
+  if (isCollapsed) {
+    // 全文表示（制限解除。改行もそのまま全て展開される）
+    detailText.style.webkitLineClamp = 'unset';
+    detailText.style.overflow = 'visible';
+    toggleLabel.innerHTML = '閉じる <i class="ph-bold ph-caret-up"></i>';
+  } else {
+    // 2行に折りたたむ（高さ統一）
+    detailText.style.webkitLineClamp = '2';
+    detailText.style.overflow = 'hidden';
+    toggleLabel.innerHTML = 'もっと見る <i class="ph-bold ph-caret-down"></i>';
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // ==================== 定期支払い管理 ====================
 function renderRecurring() {
-  return `
-    <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">定期支払い管理</h2>
-    <button class="btn btn-primary btn-full" style="margin-bottom:16px" onclick="openAddRecurring()">
-      ＋ 定期支払いを追加
-    </button>
-    ${recurringPayments.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">定期支払いが登録されていません</div>' :
-      recurringPayments.map(r => {
-        const bank = bankAccounts.find(b => b.id === r.bank_account_id);
-        const today = new Date();
-        const isDue = isRecurringDueThisMonth(r, today);
-        const processed = isRecurringProcessed(r.id, today.getFullYear(), today.getMonth() + 1);
+  // === 1. DOMの組み立て ===
+  const tmplRecurring = document.getElementById('tmpl-recurring');
+  const clone = tmplRecurring.content.cloneNode(true);
 
-        return `
-          <div class="card" style="margin-bottom:12px;opacity:${r.is_active ? '1' : '0.6'}">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start">
-              <div style="flex:1;cursor:pointer" onclick="openEditRecurring('${r.id}')">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                  <span style="font-size:15px;font-weight:500">${r.name}</span>
-                  ${!r.is_active ? '<span style="font-size:11px;background:var(--gray-200);color:var(--gray-400);padding:2px 6px;border-radius:99px">オフ中</span>' : ''}
-                  ${isDue && processed ? '<span style="font-size:11px;background:#1a2d1a;color:var(--success);padding:2px 6px;border-radius:99px">今月処理済</span>' : ''}
-                  ${isDue && !processed && r.is_active ? '<span style="font-size:11px;background:#2d1a1a;color:var(--danger);padding:2px 6px;border-radius:99px">今月未処理</span>' : ''}
-                </div>
-                <div style="font-size:13px;color:var(--gray-400)">${FREQUENCY_LABELS[r.frequency]}　${r.billing_day}日　${bank ? bank.name : '口座未設定'}</div>
-                ${r.memo ? `<div style="font-size:12px;color:var(--gray-400);margin-top:4px">${r.memo}</div>` : ''}
-              </div>
-              <div style="text-align:right;margin-left:12px">
-                <div style="font-size:16px;font-weight:500">${formatAmount(r.amount)}</div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('')
-    }
-  `;
+  if (recurringPayments.length === 0) {
+    clone.querySelector('.no-data').style.display = 'block';
+  } else {
+    const listContainer = clone.querySelector('.recurring-list-container');
+    const tmplItem = document.getElementById('tmpl-recurring-item');
+    const today = new Date();
+
+    recurringPayments.forEach(r => {
+      const bank = bankAccounts.find(b => b.id === r.bank_account_id);
+      const isDue = isRecurringDueThisMonth(r, today);
+      const processed = isRecurringProcessed(r.id, today.getFullYear(), today.getMonth() + 1);
+
+      const itemClone = tmplItem.content.cloneNode(true);
+      const cardEl = itemClone.querySelector('.recurring-card');
+      const infoEl = itemClone.querySelector('.recurring-info');
+
+      // 非アクティブ（オフ）時の透過度設定
+      cardEl.style.opacity = r.is_active ? '1' : '0.6';
+
+      // 編集ダイアログ起動設定
+      infoEl.setAttribute('onclick', `openEditRecurring('${r.id}')`);
+
+      // 名称と金額
+      itemClone.querySelector('.recurring-name').textContent = r.name;
+      itemClone.querySelector('.recurring-amount').textContent = formatAmount(r.amount);
+
+      // 補足情報（周期・引き落とし日・口座名）
+      const freqLabel = FREQUENCY_LABELS[r.frequency] || '';
+      const bankName = bank ? bank.name : '口座未設定';
+      itemClone.querySelector('.recurring-meta').textContent = `${freqLabel} ${r.billing_day}日 ${bankName}`;
+
+      // メモ（存在時のみ）
+      if (r.memo) {
+        const memoEl = itemClone.querySelector('.recurring-memo');
+        memoEl.textContent = r.memo;
+        memoEl.style.display = 'block';
+      }
+
+      // ステータスバッジの挿入制御
+      const badgeContainer = itemClone.querySelector('.badge-status-container');
+      if (!r.is_active) {
+        badgeContainer.appendChild(
+          createBadge('オフ中', 'var(--gray-200)', 'var(--gray-400)')
+        );
+      } else if (isDue && processed) {
+        badgeContainer.appendChild(
+          createBadge('今月処理済', '#1a2d1a', 'var(--success)')
+        );
+      } else if (isDue && !processed) {
+        badgeContainer.appendChild(
+          createBadge('今月未処理', '#2d1a1a', 'var(--danger)')
+        );
+      }
+
+      listContainer.appendChild(itemClone);
+    });
+  }
+
+  return clone;
+}
+
+// バッジ生成用ヘルパー関数（この画面または共通処理に配置）
+function createBadge(text, bg, color) {
+  const badge = document.createElement('span');
+  badge.textContent = text;
+  badge.style.fontSize = '11px';
+  badge.style.background = bg;
+  badge.style.color = color;
+  badge.style.padding = '2px 6px';
+  badge.style.borderRadius = '99px';
+  return badge;
 }
 
 function openAddRecurring() {
@@ -797,63 +1170,60 @@ function showRecurringModal(r) {
   const isEdit = !!r;
   const todayString = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-title">${isEdit ? '定期支払い編集' : '定期支払い追加'}</div>
-      <div class="form-group">
-        <label class="form-label">名称 *</label>
-        <input class="form-input" id="rec-name" value="${r?.name || ''}" placeholder="例：家賃・電気代">
-      </div>
-      <div class="form-group">
-        <label class="form-label">金額（円） *</label>
-        <input class="form-input" id="rec-amount" type="number" value="${r?.amount || ''}" placeholder="例：50000">
-      </div>
-      <div class="form-group">
-        <label class="form-label">引き落とし口座</label>
-        <select class="form-input" id="rec-bank">
-          <option value="">未設定</option>
-          ${bankAccounts.map(b => `<option value="${b.id}" ${r?.bank_account_id === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">引き落とし日 *</label>
-        <input class="form-input" id="rec-day" type="number" min="1" max="31" value="${r?.billing_day || ''}" placeholder="例：27">
-      </div>
-      <div class="form-group">
-        <label class="form-label">頻度 *</label>
-        <select class="form-input" id="rec-frequency">
-          ${Object.entries(FREQUENCY_LABELS).map(([val, label]) =>
-            `<option value="${val}" ${r?.frequency === val ? 'selected' : ''}>${label}</option>`
-          ).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">開始日 *</label>
-        <input class="form-input" id="rec-start" type="date" value="${r?.start_date || todayString}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">メモ</label>
-        <input class="form-input" id="rec-memo" value="${r?.memo || ''}" placeholder="任意メモ">
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="rec-active" ${r?.is_active !== false ? 'checked' : ''}>
-        <label for="rec-active" class="form-label" style="margin:0">有効（オン）</label>
-      </div>
-      ${isEdit ? `
-        <div class="delete-check">
-          <input type="checkbox" id="rec-delete">
-          <label for="rec-delete">この定期支払いを削除する</label>
-        </div>
-      ` : ''}
-      <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary" style="flex:1" onclick="saveRecurring('${r?.id || ''}')">保存</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
+  const tmplModal = document.getElementById('tmpl-recurring-modal');
+  const clone = tmplModal.content.cloneNode(true);
+  const tmplOpt = document.getElementById('tmpl-option');
+
+  // モーダルタイトルの設定
+  clone.querySelector('.modal-title').textContent = isEdit ? '定期支払い編集' : '定期支払い追加';
+
+  // 各フォームフィールドの参照取得と値の初期化
+  const inputName = clone.getElementById('rec-name');
+  const inputAmount = clone.getElementById('rec-amount');
+  const selectBank = clone.getElementById('rec-bank');
+  const inputDay = clone.getElementById('rec-day');
+  const selectFrequency = clone.getElementById('rec-frequency');
+  const inputStart = clone.getElementById('rec-start');
+  const inputMemo = clone.getElementById('rec-memo');
+  const checkActive = clone.getElementById('rec-active');
+
+  inputName.value = r?.name || '';
+  inputAmount.value = r?.amount || '';
+  inputDay.value = r?.billing_day || '';
+  inputStart.value = r?.start_date || todayString;
+  inputMemo.value = r?.memo || '';
+  checkActive.checked = r?.is_active !== false;
+
+  // 口座 `<select>` の選択肢を生成
+  bankAccounts.forEach(b => {
+    const optClone = tmplOpt.content.cloneNode(true);
+    const optEl = optClone.querySelector('option');
+    optEl.value = b.id;
+    optEl.textContent = b.name;
+    if (r?.bank_account_id === b.id) optEl.selected = true;
+    selectBank.appendChild(optClone);
+  });
+
+  // 頻度 `<select>` の選択肢を生成
+  Object.entries(FREQUENCY_LABELS).forEach(([val, label]) => {
+    const optClone = tmplOpt.content.cloneNode(true);
+    const optEl = optClone.querySelector('option');
+    optEl.value = val;
+    optEl.textContent = label;
+    if (r?.frequency === val) optEl.selected = true;
+    selectFrequency.appendChild(optClone);
+  });
+
+  // 編集モード時の「削除チェックボックス」と「保存ボタン」のクリックイベント設定
+  if (isEdit) {
+    clone.querySelector('.delete-check').style.display = 'block';
+  }
+
+  const saveBtn = clone.querySelector('.btn-save');
+  saveBtn.setAttribute('onclick', `saveRecurring('${r?.id || ''}')`);
+
+  // DOMへの追加とスクロール制御（元のロジックと100%同じ）
+  document.body.appendChild(clone);
   document.body.style.overflow = 'hidden';
 }
 
@@ -894,169 +1264,234 @@ async function saveRecurring(id) {
   }
 }
 
-  // ==================== 口座管理 ====================
+
+
+
+
+
+
+
+// ==================== 口座管理 ====================
 function renderBanks() {
   const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
 
-  return `
-    <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">口座管理</h2>
-    <button class="btn btn-primary btn-full mt-8" onclick="openAddBank()" style="margin-bottom:16px">
-      ＋ 口座を追加
-    </button>
-    ${bankAccounts.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">口座が登録されていません</div>' :
-      bankAccounts.map(bank => {
-        // この口座に紐付いたカードを取得
-        const linkedCards = cards.filter(c => c.bank_account_id === bank.id);
+  const tmplBanks = document.getElementById('tmpl-banks');
+  const clone = tmplBanks.content.cloneNode(true);
 
-        // 各カードの今月引き落とし予定額を集計
-        let totalBilling = 0;
-        const cardBillings = linkedCards.map(card => {
-          const billingLastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-          const billingDay = Math.min(card.billing_day, billingLastDay);
-          const billingDate = new Date(today.getFullYear(), today.getMonth(), billingDay);
+  if (bankAccounts.length === 0) {
+    clone.querySelector('.no-data').style.display = 'block';
+  } else {
+    const listContainer = clone.querySelector('.bank-list-container');
+    const tmplCard = document.getElementById('tmpl-bank-card');
+    const tmplRecItem = document.getElementById('tmpl-bank-recurring-item');
+    const tmplCardItem = document.getElementById('tmpl-bank-card-item');
 
-          // 引き落とし日を過ぎていたら除外
-          if (today > billingDate) return { card, amount: 0, billingDate, isPast: true };
+    bankAccounts.forEach(bank => {
+      const cardClone = tmplCard.content.cloneNode(true);
 
+      // 口座基本情報
+      cardClone.querySelector('.bank-name').textContent = bank.name;
+      cardClone.querySelector('.bank-balance').textContent = formatAmount(bank.balance);
+      cardClone.querySelector('.btn-edit-bank').setAttribute('onclick', `openEditBank('${bank.id}')`);
+
+      let totalUnprocessed = 0; // 未引き落とし合計
+      let totalProcessed = 0;   // 処理済み合計
+
+      // 1. 口座に紐付いたカードの計算・表示処理
+      const linkedCards = cards.filter(c => c.bank_account_id === bank.id);
+      const cardBillingSection = cardClone.querySelector('.card-billing-section');
+      const noLinkedCards = cardClone.querySelector('.no-linked-cards');
+
+      if (linkedCards.length > 0) {
+        cardBillingSection.style.display = 'block';
+        const cardBillingList = cardClone.querySelector('.card-billing-list');
+
+        linkedCards.forEach(card => {
+          const cardItemClone = tmplCardItem.content.cloneNode(true);
+          
+          // 当月対象トランザクションの集計
           const cardTx = transactions.filter(tx => {
             if (tx.card_id !== card.id) return false;
             const billing = calcBillingDate(tx.used_date, card.closing_day, card.billing_day);
             return isSameMonth(billing, today);
           });
-
           const amount = cardTx.reduce((sum, tx) => sum + tx.amount, 0);
-          totalBilling += amount;
-          return { card, amount, billingDate, isPast: false };
+
+          // 処理済み判定
+          const isProcessed = isCardBillingProcessed(card.id, currentYear, currentMonth);
+
+          if (isProcessed) {
+            totalProcessed += amount;
+          } else {
+            totalUnprocessed += amount;
+          }
+
+          // 日付文字列生成
+          const billingLastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+          const billingDay = Math.min(card.billing_day, billingLastDay);
+          const dateStr = `${currentMonth}/${String(billingDay).padStart(2, '0')}`;
+
+          cardItemClone.querySelector('.card-name').textContent = card.name;
+          cardItemClone.querySelector('.billing-date-text').textContent = `${dateStr}引き落とし`;
+
+          const amountEl = cardItemClone.querySelector('.billing-amount');
+          amountEl.textContent = formatAmount(amount);
+          amountEl.style.color = isProcessed ? 'var(--gray-400)' : 'var(--gray-800)';
+
+          // バッジと処理ボタンの制御
+          const badgeProcessed = cardItemClone.querySelector('.badge-card-processed');
+          const btnProcess = cardItemClone.querySelector('.btn-process-card');
+
+          if (isProcessed) {
+            if (badgeProcessed) badgeProcessed.style.display = 'inline';
+            if (btnProcess) btnProcess.style.display = 'none';
+          } else {
+            if (badgeProcessed) badgeProcessed.style.display = 'none';
+            if (btnProcess) {
+              if (amount > 0) {
+                btnProcess.style.display = 'inline-block';
+                btnProcess.setAttribute('onclick', `processCardBilling('${card.id}', ${amount}, ${currentYear}, ${currentMonth})`);
+              } else {
+                btnProcess.style.display = 'none';
+              }
+            }
+          }
+
+          cardBillingList.appendChild(cardItemClone);
         });
+      } else {
+        cardBillingSection.style.display = 'none';
+        if (noLinkedCards) noLinkedCards.style.display = 'block';
+      }
 
-        const balance = bank.balance;
-        const remaining = balance - totalBilling;
-        const isShort = remaining < 0;
+      // 2. 定期支払いの計算・表示処理
+      const linkedRecurring = recurringPayments.filter(r => r.bank_account_id === bank.id);
+      const dueRecurring = linkedRecurring.filter(r => isRecurringDueThisMonth(r, today));
 
-        return `
-          <div class="card" style="margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <div>
-                <div style="font-size:16px;font-weight:500">${bank.name}</div>
-                <div style="font-size:12px;color:var(--gray-400);margin-top:2px">残高</div>
-              </div>
-              <div style="text-align:right">
-                <div style="font-size:20px;font-weight:500;color:var(--primary)">${formatAmount(balance)}</div>
-                <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;margin-top:4px" onclick="openEditBank('${bank.id}')">
-                  <i class="ph-bold ph-pencil"></i> 編集
-                </button>
-              </div>
-            </div>
+      if (dueRecurring.length > 0) {
+        const recurringSection = cardClone.querySelector('.recurring-section');
+        const recurringList = cardClone.querySelector('.recurring-list');
+        if (recurringSection) recurringSection.style.display = 'block';
 
-            ${(() => {
-              // この口座の定期支払いを取得
-              const linkedRecurring = recurringPayments.filter(r => r.bank_account_id === bank.id);
-              const dueRecurring = linkedRecurring.filter(r =>
-                isRecurringDueThisMonth(r, today)
-              );
+        dueRecurring.forEach(r => {
+          const recClone = tmplRecItem.content.cloneNode(true);
+          const isProcessed = isRecurringProcessed(r.id, currentYear, currentMonth);
 
-              if (dueRecurring.length === 0) return '';
+          if (r.is_active) {
+            if (isProcessed) {
+              totalProcessed += r.amount;
+            } else {
+              totalUnprocessed += r.amount;
+            }
+          }
 
-              const recurringTotal = dueRecurring
-                .filter(r => r.is_active)
-                .reduce((sum, r) => {
-                  const processed = isRecurringProcessed(r.id, today.getFullYear(), today.getMonth() + 1);
-                  return processed ? sum : sum + r.amount;
-                }, 0);
+          recClone.querySelector('.rec-name').textContent = r.name;
+          recClone.querySelector('.rec-meta').textContent = `${r.billing_day}日 ${FREQUENCY_LABELS[r.frequency]}`;
 
-              totalBilling += recurringTotal;
+          if (!r.is_active) recClone.querySelector('.badge-off').style.display = 'inline';
+          if (isProcessed) recClone.querySelector('.badge-processed').style.display = 'inline';
 
-              return `
-                <div style="border-top:1px solid var(--gray-200);padding-top:12px;margin-top:12px">
-                  <div style="font-size:13px;color:var(--gray-400);margin-bottom:8px">今月の定期支払い</div>
-                  ${dueRecurring.map(r => {
-                    const processed = isRecurringProcessed(r.id, today.getFullYear(), today.getMonth() + 1);
-                    return `
-                      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-200)">
-                        <div>
-                          <div style="font-size:14px">${r.name}
-                            ${!r.is_active ? '<span style="font-size:11px;color:var(--gray-400);margin-left:4px">オフ中</span>' : ''}
-                            ${processed ? '<span style="font-size:11px;color:var(--success);margin-left:4px">処理済</span>' : ''}
-                          </div>
-                          <div style="font-size:11px;color:var(--gray-400)">${r.billing_day}日　${FREQUENCY_LABELS[r.frequency]}</div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px">
-                          <div style="font-size:14px;font-weight:500;color:${!r.is_active || processed ? 'var(--gray-400)' : 'var(--gray-800)'}">${formatAmount(r.amount)}</div>
-                          ${r.is_active && !processed ? `
-                            <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" onclick="processRecurring('${r.id}', ${r.amount}, ${today.getFullYear()}, ${today.getMonth() + 1})">
-                              処理
-                            </button>
-                          ` : ''}
-                        </div>
-                      </div>
-                    `;
-                  }).join('')}
-                </div>
-              `;
-            })()}
-            ${linkedCards.length > 0 ? `
-              <div style="border-top:1px solid var(--gray-200);padding-top:12px">
-                <div style="font-size:13px;color:var(--gray-400);margin-bottom:8px">今月の引き落とし予定</div>
-                ${cardBillings.map(({ card, amount, billingDate, isPast }) => `
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--gray-200)">
-                    <div>
-                      <div style="font-size:14px">${card.name}</div>
-                      <div style="font-size:11px;color:var(--gray-400)">${billingDate.getMonth()+1}/${String(billingDate.getDate()).padStart(2,'0')}引き落とし${isPast ? '（済）' : ''}</div>
-                    </div>
-                    <div style="font-size:14px;font-weight:500;color:${isPast ? 'var(--gray-400)' : 'var(--gray-800)'}">${isPast ? '-' : formatAmount(amount)}</div>
-                  </div>
-                `).join('')}
+          const amountEl = recClone.querySelector('.rec-amount');
+          amountEl.textContent = formatAmount(r.amount);
+          amountEl.style.color = (!r.is_active || isProcessed) ? 'var(--gray-400)' : 'var(--gray-800)';
 
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;margin-top:4px">
-                  <div style="font-size:14px;font-weight:500">引き落とし合計</div>
-                  <div style="font-size:16px;font-weight:500">${formatAmount(totalBilling)}</div>
-                </div>
+          const btnProcess = recClone.querySelector('.btn-process');
+          if (btnProcess) {
+            if (r.is_active && !isProcessed) {
+              btnProcess.style.display = 'inline-block';
+              btnProcess.setAttribute('onclick', `processRecurring('${r.id}', ${r.amount}, ${currentYear}, ${currentMonth})`);
+            } else {
+              btnProcess.style.display = 'none';
+            }
+          }
 
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;background:${isShort ? '#2d1a1a' : '#1a2d1a'}">
-                  <div style="font-size:14px;font-weight:500;color:${isShort ? 'var(--danger)' : 'var(--success)'}">${isShort ? '⚠️ 残高不足' : '✅ 残高充足'}</div>
-                  <div style="font-size:16px;font-weight:500;color:${isShort ? 'var(--danger)' : 'var(--success)'}">
-                    ${isShort ? '-' : '+'}${formatAmount(Math.abs(remaining))}
-                  </div>
-                </div>
+          if (recurringList) recurringList.appendChild(recClone);
+        });
+      }
 
-                ${totalBilling > 0 ? `
-                  <button class="btn btn-primary btn-full" style="margin-top:12px" onclick="createBillingTransaction('${bank.id}', ${totalBilling})">
-                    <i class="ph-bold ph-check-circle"></i>　引き落とし確定レコードを作成
-                  </button>
-                ` : ''}
-              </div>
-            ` : '<div style="font-size:13px;color:var(--gray-400);padding-top:8px;border-top:1px solid var(--gray-200)">紐付きカードなし</div>'}
-          </div>
-        `;
-      }).join('')
-    }
-  `;
+      // 3. 今月サマリー ＆ 残高判定のセット
+      const grandTotal = totalUnprocessed + totalProcessed; // 今月全体の支払予定合計
+
+      // ① 支払予定合計（全額）
+      const elTotalBilling = cardClone.querySelector('.total-billing-amount');
+      if (elTotalBilling) elTotalBilling.textContent = formatAmount(grandTotal);
+
+      // ② 未引き落とし分 ＆ 処理済み分
+      const elUnprocessedTotal = cardClone.querySelector('.unprocessed-billing-amount');
+      const elProcessedTotal = cardClone.querySelector('.processed-billing-amount');
+      if (elUnprocessedTotal) elUnprocessedTotal.textContent = formatAmount(totalUnprocessed);
+      if (elProcessedTotal) elProcessedTotal.textContent = formatAmount(totalProcessed);
+
+      // ③ 残高判定（現在の口座残高 - 今後引かれる未引き落とし分）
+      const remaining = bank.balance - totalUnprocessed;
+      const isShort = remaining < 0;
+
+      const statusBox = cardClone.querySelector('.status-box');
+      const statusLabel = cardClone.querySelector('.status-label');
+      const statusAmount = cardClone.querySelector('.status-amount');
+
+      if (statusBox) {
+        statusBox.style.background = isShort ? '#2d1a1a' : '#1a2d1a';
+        statusLabel.textContent = isShort ? '⚠️ 残高不足' : '✅ 残高充足';
+        statusLabel.style.color = isShort ? 'var(--danger)' : 'var(--success)';
+
+        statusAmount.textContent = `${isShort ? '-' : '+'}${formatAmount(Math.abs(remaining))}`;
+        statusAmount.style.color = isShort ? 'var(--danger)' : 'var(--success)';
+      }
+
+      listContainer.appendChild(cardClone);
+    });
+  }
+
+  return clone;
 }
 
-async function createBillingTransaction(bankId, totalAmount) {
-  const today = new Date();
-  const todayString = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+// カード引き落としが処理済みかチェックする関数
+function isCardBillingProcessed(cardId, year, month) {
+  if (!Array.isArray(cardBillingLogs)) return false;
+  return cardBillingLogs.some(log => 
+    log.card_id === cardId && log.target_year === year && log.target_month === month
+  );
+}
 
-  if (!confirm(`${formatAmount(totalAmount)}の引き落とし確定レコードを作成しますか？`)) return;
+// クレジットカード引き落とし処理（個別実行）
+async function processCardBilling(cardId, amount, year, month) {
+  const card = cards.find(c => c.id === cardId);
+  if (!card) return;
 
-  // 残高を更新
-  const bank = bankAccounts.find(b => b.id === bankId);
-  const newBalance = bank.balance - totalAmount;
+  if (!confirm(`${card.name} ${year}年${month}月分（${formatAmount(amount)}）の引き落としを処理しますか？\n口座残高からマイナスされます。`)) return;
+
+  const bank = bankAccounts.find(b => b.id === card.bank_account_id);
+  if (!bank) return;
 
   try {
-    const { error } = await window._db.from('bank_accounts')
-      .update({ balance: newBalance, updated_at: new Date() })
-      .eq('id', bankId);
-    if (error) throw error;
+    // 1. 処理ログの作成
+    const { error: logError } = await window._db.from('card_billing_logs').insert({
+      card_id: cardId,
+      target_year: year,
+      target_month: month,
+      amount: amount
+    });
+    if (logError) throw logError;
 
-    showToast('✅ 残高を更新しました');
+    // 2. 口座残高の減額
+    const { error: bankError } = await window._db.from('bank_accounts')
+      .update({ balance: bank.balance - amount, updated_at: new Date() })
+      .eq('id', bank.id);
+    if (bankError) throw bankError;
+
+    showToast('✅ 引き落としを処理しました');
     await loadData();
     renderPage();
   } catch (e) {
-    showToast('❌ 更新に失敗しました', 'error');
+    showToast('❌ 処理に失敗しました', 'error');
     console.error(e);
   }
 }
+
+
 
 function openAddBank() {
   showBankModal(null);
@@ -1069,32 +1504,31 @@ function openEditBank(id) {
 
 function showBankModal(bank) {
   const isEdit = !!bank;
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-title">${isEdit ? '口座編集' : '口座追加'}</div>
-      <div class="form-group">
-        <label class="form-label">口座名 *</label>
-        <input class="form-input" id="bank-name" value="${bank?.name || ''}" placeholder="例：楽天銀行">
-      </div>
-      <div class="form-group">
-        <label class="form-label">残高（円） *</label>
-        <input class="form-input" id="bank-balance" type="number" value="${bank?.balance || ''}" placeholder="例：100000">
-      </div>
-      ${isEdit ? `
-        <div class="delete-check">
-          <input type="checkbox" id="bank-delete">
-          <label for="bank-delete">この口座を削除する</label>
-        </div>
-      ` : ''}
-      <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary" style="flex:1" onclick="saveBank('${bank?.id || ''}')">保存</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
+
+  const tmplModal = document.getElementById('tmpl-bank-modal');
+  const clone = tmplModal.content.cloneNode(true);
+
+  // タイトルの設定
+  clone.querySelector('.modal-title').textContent = isEdit ? '口座編集' : '口座追加';
+
+  // 入力フィールドの初期化
+  const inputName = clone.getElementById('bank-name');
+  const inputBalance = clone.getElementById('bank-balance');
+
+  inputName.value = bank?.name || '';
+  inputBalance.value = bank?.balance || '';
+
+  // 編集モード時のみ削除チェックボックスを表示
+  if (isEdit) {
+    clone.querySelector('.delete-check').style.display = 'block';
+  }
+
+  // 保存ボタンにイベントを設定
+  const saveBtn = clone.querySelector('.btn-save');
+  saveBtn.setAttribute('onclick', `saveBank('${bank?.id || ''}')`);
+
+  // DOMへの追加とスクロール制御
+  document.body.appendChild(clone);
   document.body.style.overflow = 'hidden';
 }
 
@@ -1161,61 +1595,87 @@ async function processRecurring(paymentId, amount, year, month) {
 }
 
 
+
+
+
+
+
+
+
+
+
 // ==================== カード管理 ====================
 function renderCards() {
-  return `
-    <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">カード管理</h2>
-    <button class="btn btn-primary btn-full mt-8" onclick="openAddCard()">＋ カードを追加</button>
-    <div class="mt-16">
-    ${cards.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">カードが登録されていません</div>' :
-      cards.map(card => `
-        <div class="card transaction-item" onclick="openEditCard('${card.id}')">
-          <div class="transaction-info">
-            <div class="shop">${card.name}</div>
-            <div class="date">${card.brand}　締め日:${card.closing_day}日　引き落とし:${card.billing_day}日</div>
-          </div>
-          <div style="color:var(--gray-400);font-size:13px">${formatAmount(card.credit_limit)}</div>
-        </div>
-      `).join('')
-    }
-    </div>
-  `;
+  const tmplCards = document.getElementById('tmpl-cards');
+  const clone = tmplCards.content.cloneNode(true);
+
+  const container = clone.querySelector('.card-list-container');
+  const noDataEl = clone.querySelector('.no-data');
+
+  if (cards.length === 0) {
+    noDataEl.style.display = 'block';
+  } else {
+    const tmplItem = document.getElementById('tmpl-card-item');
+
+    cards.forEach(card => {
+      const itemClone = tmplItem.content.cloneNode(true);
+      const cardEl = itemClone.querySelector('.transaction-item');
+
+      // カード情報の埋め込み
+      itemClone.querySelector('.card-name').textContent = card.name;
+      itemClone.querySelector('.card-meta').textContent = `${card.brand} 締め日:${card.closing_day}日 引き落とし:${card.billing_day}日`;
+      itemClone.querySelector('.card-limit').textContent = formatAmount(card.credit_limit);
+
+      // クリックで編集画面を開くイベント設定
+      cardEl.setAttribute('onclick', `openEditCard('${card.id}')`);
+
+      container.appendChild(itemClone);
+    });
+  }
+
+  return clone;
 }
 
 // ==================== ブックマーク ====================
 function renderBookmarks() {
   const bookmarked = transactions.filter(tx => tx.is_bookmarked);
 
-  return `
-    <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">ブックマーク</h2>
-    ${bookmarked.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">ブックマークはありません</div>' :
-      bookmarked.map(tx => {
-        const card = cards.find(c => c.id === tx.card_id);
-        return `
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-              <div style="flex:1">
-                <div class="shop">${tx.shop || '（購入先未設定）'}</div>
-                <div class="date" style="font-size:12px;color:var(--gray-400);margin-top:2px">
-                  ${card ? card.name : ''}　${tx.category || ''}
-                </div>
-                ${tx.detail ? `<div style="font-size:13px;color:var(--gray-600);margin-top:4px;white-space:pre-wrap">${tx.detail}</div>` : ''}
-              </div>
-              <div style="font-size:15px;font-weight:500;color:var(--gray-800);white-space:nowrap;margin-left:8px">${formatAmount(tx.amount)}</div>
-            </div>
-            <div style="display:flex;gap:8px;border-top:1px solid var(--gray-200);padding-top:10px">
-              <button onclick="openEditTransaction('${tx.id}')" style="flex:1;background:none;border:1px solid var(--gray-200);border-radius:8px;padding:6px;cursor:pointer;color:var(--gray-400);font-size:12px">
-                <i class="ph-bold ph-pencil"></i>　編集
-              </button>
-              <button onclick="reuseTransaction('${tx.id}')" style="flex:1;background:none;border:1px solid var(--primary);border-radius:8px;padding:6px;cursor:pointer;color:var(--primary);font-size:12px">
-                <i class="ph-bold ph-copy"></i>　再利用（新規追加）
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('')
-    }
-  `;
+  const tmplBookmarks = document.getElementById('tmpl-bookmarks');
+  const clone = tmplBookmarks.content.cloneNode(true);
+
+  const noDataEl = clone.querySelector('.no-data');
+  const listContainer = clone.querySelector('.bookmark-list-container');
+
+  if (bookmarked.length === 0) {
+    noDataEl.style.display = 'block';
+  } else {
+    const tmplItem = document.getElementById('tmpl-bookmark-item');
+
+    bookmarked.forEach(tx => {
+      const itemClone = tmplItem.content.cloneNode(true);
+      const card = cards.find(c => c.id === tx.card_id);
+
+      // 店名・カテゴリ・金額
+      itemClone.querySelector('.shop').textContent = tx.shop || '（購入先未設定）';
+      itemClone.querySelector('.date').textContent = `${card ? card.name : ''} ${tx.category || ''}`;
+      itemClone.querySelector('.tx-amount').textContent = formatAmount(tx.amount);
+
+      // メモ（tx.detail）が存在する場合のみ表示
+      if (tx.detail) {
+        const detailEl = itemClone.querySelector('.tx-detail');
+        detailEl.textContent = tx.detail;
+        detailEl.style.display = 'block';
+      }
+
+      // ボタンのイベント設定
+      itemClone.querySelector('.btn-edit').setAttribute('onclick', `openEditTransaction('${tx.id}')`);
+      itemClone.querySelector('.btn-reuse').setAttribute('onclick', `reuseTransaction('${tx.id}')`);
+
+      listContainer.appendChild(itemClone);
+    });
+  }
+
+  return clone;
 }
 
 function reuseTransaction(id) {
@@ -1242,6 +1702,12 @@ function reuseTransaction(id) {
   showTransactionModal(reuseTx);
 }
 
+
+
+
+
+
+
 // ==================== 検索 ====================
 let searchState = {
   keyword: '',
@@ -1254,69 +1720,83 @@ let searchState = {
 function renderSearch() {
   const results = getSearchResults();
 
-  return `
-    <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">検索</h2>
+  const tmplSearch = document.getElementById('tmpl-search');
+  const clone = tmplSearch.content.cloneNode(true);
 
-    <!-- 検索フォーム -->
-    <div class="card" style="margin-bottom:12px">
-      <div class="form-group">
-        <label class="form-label">キーワード（購入先・カテゴリ・詳細）</label>
-        <input class="form-input" id="search-keyword" type="text" placeholder="例：Amazon、食費"
-          value="${searchState.keyword}" oninput="updateSearch()">
-      </div>
-      <div class="form-group">
-        <label class="form-label">カード</label>
-        <select class="form-input" id="search-card" onchange="updateSearch()">
-          <option value="">すべて</option>
-          ${cards.map(c => `<option value="${c.id}" ${searchState.cardId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">引き落とし年月</label>
-        <input class="form-input" id="search-yearmonth" type="month"
-          value="${searchState.yearMonth}" onchange="updateSearch()">
-      </div>
-      <div style="display:flex;gap:8px">
-        <div class="form-group" style="flex:1">
-          <label class="form-label">金額（下限）</label>
-          <input class="form-input" id="search-amount-min" type="number" placeholder="例：1000"
-            value="${searchState.amountMin}" oninput="updateSearch()">
-        </div>
-        <div class="form-group" style="flex:1">
-          <label class="form-label">金額（上限）</label>
-          <input class="form-input" id="search-amount-max" type="number" placeholder="例：10000"
-            value="${searchState.amountMax}" oninput="updateSearch()">
-        </div>
-      </div>
-      <button class="btn btn-ghost btn-full" onclick="clearSearch()">
-        <i class="ph-bold ph-x"></i>　条件をクリア
-      </button>
-    </div>
+  // 1. 検索フォームの値設定（searchStateの反映）
+  const inputKeyword = clone.getElementById('search-keyword');
+  const selectCard = clone.getElementById('search-card');
+  const inputYearMonth = clone.getElementById('search-yearmonth');
+  const inputAmountMin = clone.getElementById('search-amount-min');
+  const inputAmountMax = clone.getElementById('search-amount-max');
 
-    <!-- 検索結果 -->
-    <div class="search-count" style="font-size:13px;color:var(--gray-400);margin-bottom:8px">
-      ${results.length}件見つかりました
-    </div>
-    <div id="search-results">
-    ${results.length === 0 ? '<div class="card text-center" style="color:var(--gray-400)">条件に一致するデータがありません</div>' :
-      results.map(tx => {
-        const card = cards.find(c => c.id === tx.card_id);
-        return `
-          <div class="card transaction-item" onclick="openEditTransaction('${tx.id}')">
-            <div class="transaction-info">
-              <div class="shop">${tx.shop || '（購入先未設定）'}
-                ${tx.is_confirmed ? '<span class="badge badge-confirmed">確定</span>' : '<span class="badge badge-reserved">未確定</span>'}
-              </div>
-              <div class="date">${formatDate(tx.used_date)}　${card ? card.name : ''}　${tx.category || ''}</div>
-              ${tx.detail ? `<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail}</div>` : ''}
-            </div>
-            <div class="transaction-amount">${formatAmount(tx.amount)}</div>
-          </div>
-        `;
-      }).join('')
+  inputKeyword.value = searchState.keyword || '';
+  inputYearMonth.value = searchState.yearMonth || '';
+  inputAmountMin.value = searchState.amountMin || '';
+  inputAmountMax.value = searchState.amountMax || '';
+
+  // カード選択肢の動的生成
+  cards.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    if (searchState.cardId === c.id) {
+      opt.selected = true;
     }
-    </div>
-  `;
+    selectCard.appendChild(opt);
+  });
+
+  // 2. 検索結果件数の表示
+  clone.querySelector('.search-count').textContent = `${results.length}件見つかりました`;
+
+  // 3. 検索結果リストの表示
+  const noDataEl = clone.querySelector('#search-results .no-data');
+  const resultsList = clone.querySelector('#search-results .search-results-list');
+
+  if (results.length === 0) {
+    noDataEl.style.display = 'block';
+  } else {
+    const tmplItem = document.getElementById('tmpl-search-item');
+
+    results.forEach(tx => {
+      const itemClone = tmplItem.content.cloneNode(true);
+      const card = cards.find(c => c.id === tx.card_id);
+      const itemEl = itemClone.querySelector('.transaction-item');
+
+      // 店舗名 & 確定/未確定バッジ
+      itemClone.querySelector('.shop-name').textContent = (tx.shop || '（購入先未設定）') + ' ';
+      
+      const badgeEl = itemClone.querySelector('.badge');
+      if (tx.is_confirmed) {
+        badgeEl.className = 'badge badge-confirmed';
+        badgeEl.textContent = '確定';
+      } else {
+        badgeEl.className = 'badge badge-reserved';
+        badgeEl.textContent = '未確定';
+      }
+
+      // 利用日・カード名・カテゴリ
+      itemClone.querySelector('.date').textContent = `${formatDate(tx.used_date)} ${card ? card.name : ''} ${tx.category || ''}`;
+
+      // 詳細メモ（30文字カット処理）
+      if (tx.detail) {
+        const detailEl = itemClone.querySelector('.tx-detail');
+        const shortDetail = tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail;
+        detailEl.textContent = shortDetail;
+        detailEl.style.display = 'block';
+      }
+
+      // 金額
+      itemClone.querySelector('.transaction-amount').textContent = formatAmount(tx.amount);
+
+      // クリックイベント設定（編集画面を開く）
+      itemEl.setAttribute('onclick', `openEditTransaction('${tx.id}')`);
+
+      resultsList.appendChild(itemClone);
+    });
+  }
+
+  return clone;
 }
 
 function getSearchResults() {
@@ -1352,7 +1832,9 @@ function getSearchResults() {
   }).sort((a, b) => new Date(b.used_date) - new Date(a.used_date));
 }
 
+
 function updateSearch() {
+  // 1. フォームの入力内容を searchState に保持
   searchState.keyword = document.getElementById('search-keyword')?.value || '';
   searchState.cardId = document.getElementById('search-card')?.value || '';
   searchState.yearMonth = document.getElementById('search-yearmonth')?.value || '';
@@ -1362,26 +1844,69 @@ function updateSearch() {
   const resultsEl = document.getElementById('search-results');
   const results = getSearchResults();
 
-  document.querySelector('.search-count').textContent = `${results.length}件見つかりました`;
+  // 件数表示の更新
+  const countEl = document.querySelector('.search-count');
+  if (countEl) {
+    countEl.textContent = `${results.length}件見つかりました`;
+  }
 
+  // 2. 検索結果エリアのDOM再構築
   if (resultsEl) {
-    resultsEl.innerHTML = results.length === 0 ?
-      '<div class="card text-center" style="color:var(--gray-400)">条件に一致するデータがありません</div>' :
-      results.map(tx => {
+    // 既存の中身をクリア
+    resultsEl.textContent = '';
+
+    if (results.length === 0) {
+      // 該当データなしの表示
+      const noDataEl = document.createElement('div');
+      noDataEl.className = 'card text-center';
+      noDataEl.style.color = 'var(--gray-400)';
+      noDataEl.textContent = '条件に一致するデータがありません';
+      resultsEl.appendChild(noDataEl);
+    } else {
+      // テンプレートを使って結果リストを生成
+      const tmplItem = document.getElementById('tmpl-search-item');
+      const listContainer = document.createElement('div');
+      listContainer.className = 'search-results-list';
+
+      results.forEach(tx => {
+        const itemClone = tmplItem.content.cloneNode(true);
         const card = cards.find(c => c.id === tx.card_id);
-        return `
-          <div class="card transaction-item" onclick="openEditTransaction('${tx.id}')">
-            <div class="transaction-info">
-              <div class="shop">${tx.shop || '（購入先未設定）'}
-                ${tx.is_confirmed ? '<span class="badge badge-confirmed">確定</span>' : '<span class="badge badge-reserved">未確定</span>'}
-              </div>
-              <div class="date">${formatDate(tx.used_date)}　${card ? card.name : ''}　${tx.category || ''}</div>
-              ${tx.detail ? `<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail}</div>` : ''}
-            </div>
-            <div class="transaction-amount">${formatAmount(tx.amount)}</div>
-          </div>
-        `;
-      }).join('');
+        const itemEl = itemClone.querySelector('.transaction-item');
+
+        // 店舗名 & 確定/未確定バッジ
+        itemClone.querySelector('.shop-name').textContent = (tx.shop || '（購入先未設定）') + ' ';
+
+        const badgeEl = itemClone.querySelector('.badge');
+        if (tx.is_confirmed) {
+          badgeEl.className = 'badge badge-confirmed';
+          badgeEl.textContent = '確定';
+        } else {
+          badgeEl.className = 'badge badge-reserved';
+          badgeEl.textContent = '未確定';
+        }
+
+        // 利用日・カード名・カテゴリ
+        itemClone.querySelector('.date').textContent = `${formatDate(tx.used_date)} ${card ? card.name : ''} ${tx.category || ''}`;
+
+        // 詳細メモ（30文字カット処理）
+        if (tx.detail) {
+          const detailEl = itemClone.querySelector('.tx-detail');
+          const shortDetail = tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail;
+          detailEl.textContent = shortDetail;
+          detailEl.style.display = 'block';
+        }
+
+        // 金額
+        itemClone.querySelector('.transaction-amount').textContent = formatAmount(tx.amount);
+
+        // クリックイベント設定（編集画面を開く）
+        itemEl.setAttribute('onclick', `openEditTransaction('${tx.id}')`);
+
+        listContainer.appendChild(itemClone);
+      });
+
+      resultsEl.appendChild(listContainer);
+    }
   }
 }
 
@@ -1394,17 +1919,13 @@ function clearSearch() {
 let deletedActiveTab = 'cards';
 
 function renderDeleted() {
+  const tmplDeleted = document.getElementById('tmpl-deleted');
+  const clone = tmplDeleted.content.cloneNode(true);
+
+  // 描画直後に「カード」タブの内容を表示する既存処理
   setTimeout(() => showDeletedTab('cards'), 0);
-  return `
-    <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">削除済み一覧</h2>
-    <div id="deleted-content">
-      <div style="display:flex;gap:8px;margin-bottom:12px" id="deleted-tabs">
-        <button class="btn btn-primary" id="tab-cards" onclick="showDeletedTab('cards')">カード</button>
-        <button class="btn btn-ghost" id="tab-transactions" onclick="showDeletedTab('transactions')">利用データ</button>
-      </div>
-      <div id="deleted-list"></div>
-    </div>
-  `;
+
+  return clone;
 }
 
 async function showDeletedTab(tab) {
@@ -1412,39 +1933,62 @@ async function showDeletedTab(tab) {
   const el = document.getElementById('deleted-list');
   if (!el) return;
 
+  // タブボタンのアクティブ表示切り替え
   const tabCards = document.getElementById('tab-cards');
   const tabTx = document.getElementById('tab-transactions');
   if (tabCards && tabTx) {
     tabCards.className = tab === 'cards' ? 'btn btn-primary' : 'btn btn-ghost';
     tabTx.className = tab === 'transactions' ? 'btn btn-primary' : 'btn btn-ghost';
   }
+
+  // 表示エリアの初期化
+  el.textContent = '';
+
   if (tab === 'cards') {
     const { data } = await window._db.from('cards').select('*').eq('is_deleted', true);
-    el.innerHTML = (data && data.length > 0) ? data.map(card => `
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">${card.name}</span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-ghost" onclick="restoreCard('${card.id}')">復元</button>
-          <button class="btn btn-danger" onclick="permanentDeleteCard('${card.id}')">完全削除</button>
-        </div>
-      </div>
-    `).join('') : '<div class="card text-center" style="color:var(--gray-400)">削除済みカードはありません</div>';
+
+    if (data && data.length > 0) {
+      const tmplCardItem = document.getElementById('tmpl-deleted-card-item');
+
+      data.forEach(card => {
+        const itemClone = tmplCardItem.content.cloneNode(true);
+
+        itemClone.querySelector('.card-title').textContent = card.name;
+        itemClone.querySelector('.btn-restore').setAttribute('onclick', `restoreCard('${card.id}')`);
+        itemClone.querySelector('.btn-perm-delete').setAttribute('onclick', `permanentDeleteCard('${card.id}')`);
+
+        el.appendChild(itemClone);
+      });
+    } else {
+      const noDataEl = document.createElement('div');
+      noDataEl.className = 'card text-center';
+      noDataEl.style.color = 'var(--gray-400)';
+      noDataEl.textContent = '削除済みカードはありません';
+      el.appendChild(noDataEl);
+    }
   } else {
     const { data } = await window._db.from('transactions').select('*').eq('is_deleted', true);
-    el.innerHTML = (data && data.length > 0) ? data.map(tx => `
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">${tx.shop || '（購入先未設定）'}</span>
-          <span>${formatAmount(tx.amount)}</span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-ghost" onclick="restoreTransaction('${tx.id}')">復元</button>
-          <button class="btn btn-danger" onclick="permanentDeleteTransaction('${tx.id}')">完全削除</button>
-        </div>
-      </div>
-    `).join('') : '<div class="card text-center" style="color:var(--gray-400)">削除済みデータはありません</div>';
+
+    if (data && data.length > 0) {
+      const tmplTxItem = document.getElementById('tmpl-deleted-tx-item');
+
+      data.forEach(tx => {
+        const itemClone = tmplTxItem.content.cloneNode(true);
+
+        itemClone.querySelector('.card-title').textContent = tx.shop || '（購入先未設定）';
+        itemClone.querySelector('.tx-amount').textContent = formatAmount(tx.amount);
+        itemClone.querySelector('.btn-restore').setAttribute('onclick', `restoreTransaction('${tx.id}')`);
+        itemClone.querySelector('.btn-perm-delete').setAttribute('onclick', `permanentDeleteTransaction('${tx.id}')`);
+
+        el.appendChild(itemClone);
+      });
+    } else {
+      const noDataEl = document.createElement('div');
+      noDataEl.className = 'card text-center';
+      noDataEl.style.color = 'var(--gray-400)';
+      noDataEl.textContent = '削除済みデータはありません';
+      el.appendChild(noDataEl);
+    }
   }
 }
 
@@ -1462,52 +2006,57 @@ function openEditCard(id) {
 
 function showCardModal(card) {
   const isEdit = !!card;
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-title">${isEdit ? 'カード編集' : 'カード追加'}</div>
-      <div class="form-group">
-        <label class="form-label">カード名 *</label>
-        <input class="form-input" id="card-name" value="${card?.name || ''}" placeholder="例：楽天カード">
-      </div>
-      <div class="form-group">
-        <label class="form-label">カードブランド *</label>
-        <input class="form-input" id="card-brand-select" list="brand-list" value="${card?.brand || ''}" placeholder="選択または入力">
-        <datalist id="brand-list">${CARD_BRANDS.map(b => `<option value="${b}">`).join('')}</datalist>
-      </div>
-      <div class="form-group">
-        <label class="form-label">締め日 *</label>
-        <input class="form-input" id="card-closing" type="number" min="1" max="31" value="${card?.closing_day || ''}" placeholder="例：15">
-      </div>
-      <div class="form-group">
-        <label class="form-label">引き落とし日 *</label>
-        <input class="form-input" id="card-billing" type="number" min="1" max="31" value="${card?.billing_day || ''}" placeholder="例：27">
-      </div>
-      <div class="form-group">
-        <label class="form-label">利用可能枠（円） *</label>
-        <input class="form-input" id="card-limit" type="number" value="${card?.credit_limit || ''}" placeholder="例：500000">
-      </div>
-       <div class="form-group">
-        <label class="form-label">引き落とし口座</label>
-        <select class="form-input" id="card-bank">
-          <option value="">未設定</option>
-          ${bankAccounts.map(b => `<option value="${b.id}" ${card?.bank_account_id === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
-        </select>
-      </div>
-      ${isEdit ? `
-        <div class="delete-check">
-          <input type="checkbox" id="card-delete">
-          <label for="card-delete">このカードを削除する</label>
-        </div>
-      ` : ''}
-      <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary" style="flex:1" onclick="saveCard('${card?.id || ''}')">保存</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
+
+  const tmplModal = document.getElementById('tmpl-card-modal');
+  const clone = tmplModal.content.cloneNode(true);
+
+  // タイトルの設定
+  clone.querySelector('.modal-title').textContent = isEdit ? 'カード編集' : 'カード追加';
+
+  // 入力フィールド要素の取得と値の初期化
+  const inputName = clone.getElementById('card-name');
+  const inputBrand = clone.getElementById('card-brand-select');
+  const inputClosing = clone.getElementById('card-closing');
+  const inputBilling = clone.getElementById('card-billing');
+  const inputLimit = clone.getElementById('card-limit');
+  const selectBank = clone.getElementById('card-bank');
+  const brandList = clone.getElementById('brand-list');
+
+  inputName.value = card?.name || '';
+  inputBrand.value = card?.brand || '';
+  inputClosing.value = card?.closing_day || '';
+  inputBilling.value = card?.billing_day || '';
+  inputLimit.value = card?.credit_limit || '';
+
+  // ブランドリスト（datalist）の動的生成
+  CARD_BRANDS.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b;
+    brandList.appendChild(opt);
+  });
+
+  // 引き落とし口座（select）の動的生成
+  bankAccounts.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = b.name;
+    if (card?.bank_account_id === b.id) {
+      opt.selected = true;
+    }
+    selectBank.appendChild(opt);
+  });
+
+  // 編集モード時のみ削除チェックボックスを表示
+  if (isEdit) {
+    clone.querySelector('.delete-check').style.display = 'block';
+  }
+
+  // 保存ボタンにイベントを設定
+  const saveBtn = clone.querySelector('.btn-save');
+  saveBtn.setAttribute('onclick', `saveCard('${card?.id || ''}')`);
+
+  // DOMへの追加とスクロール制御
+  document.body.appendChild(clone);
   document.body.style.overflow = 'hidden';
 }
 
@@ -1557,73 +2106,65 @@ function openEditTransaction(id) {
 function showTransactionModal(tx) {
   const isEdit = !!tx;
   const today = new Date().toISOString().split('T')[0];
-  const shops = [...new Set(transactions.map(t => t.shop).filter(Boolean))];
-  const cats = [...new Set(transactions.map(t => t.category).filter(Boolean))];
 
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-title">${isEdit && !tx?._isReuse ? '利用データ編集' : '利用データ追加'}</div>
-      <div class="form-group">
-        <label class="form-label">利用日 *</label>
-        <input class="form-input" id="tx-date" type="date" value="${tx?.used_date || today}" onchange="updateBillingDate()">
-      </div>
-      <div class="form-group">
-        <label class="form-label">カード *</label>
-        <select class="form-input" id="tx-card" onchange="updateBillingDate()">
-          <option value="">選択してください</option>
-          ${cards.map(c => `<option value="${c.id}" ${tx?.card_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">金額（円） *</label>
-        <input class="form-input" id="tx-amount" type="number" value="${tx?.amount || ''}" placeholder="例：3000">
-      </div>
-<div class="form-group suggest-wrap">
-        <label class="form-label">購入先</label>
-        <input class="form-input" id="tx-shop" value="${tx?.shop || ''}" placeholder="例：Amazon"
-          oninput="filterSuggest('shop')" onfocus="filterSuggest('shop')" onblur="hideSuggest('shop')" autocomplete="off">
-        <div class="suggest-list" id="shop-suggest"></div>
-      </div>
-      <div class="form-group suggest-wrap">
-        <label class="form-label">カテゴリ</label>
-        <input class="form-input" id="tx-category" value="${tx?.category || ''}" placeholder="例：食費"
-          oninput="filterSuggest('category')" onfocus="filterSuggest('category')" onblur="hideSuggest('category')" autocomplete="off">
-        <div class="suggest-list" id="category-suggest"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">詳細</label>
-        <textarea class="form-input" id="tx-detail" placeholder="メモなど">${tx?.detail || ''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">引き落とし予定日</label>
-        <input class="form-input" id="tx-billing-date" readonly value="${tx?.billing_date ? formatDate(tx.billing_date) : ''}">
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="tx-confirmed" ${tx?.is_confirmed ? 'checked' : ''}>
-        <label for="tx-confirmed" class="form-label" style="margin:0">確定済み（チェックなし＝未確定）</label>
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="tx-bookmarked" ${tx?.is_bookmarked ? 'checked' : ''}>
-        <label for="tx-bookmarked" class="form-label" style="margin:0">🔖 ブックマーク（再利用したいデータ）</label>
-      </div>
-      ${isEdit ? `
-        <div class="delete-check">
-          <input type="checkbox" id="tx-delete">
-          <label for="tx-delete">このデータを削除する</label>
-        </div>
-      ` : ''}
-      <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary" style="flex:1" onclick="saveTransaction('${tx?.id || ''}')">保存</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
+  const tmplModal = document.getElementById('tmpl-tx-modal');
+  const clone = tmplModal.content.cloneNode(true);
+
+  // タイトルの設定（新規追加・再利用・編集の判別）
+  const titleText = (isEdit && !tx?._isReuse) ? '利用データ編集' : '利用データ追加';
+  clone.querySelector('.modal-title').textContent = titleText;
+
+  // 各入力要素の取得
+  const inputDate = clone.getElementById('tx-date');
+  const selectCard = clone.getElementById('tx-card');
+  const inputAmount = clone.getElementById('tx-amount');
+  const inputShop = clone.getElementById('tx-shop');
+  const inputCategory = clone.getElementById('tx-category');
+  const inputDetail = clone.getElementById('tx-detail');
+  const inputBillingDate = clone.getElementById('tx-billing-date');
+  const checkConfirmed = clone.getElementById('tx-confirmed');
+  const checkBookmarked = clone.getElementById('tx-bookmarked');
+
+  // 値の初期化（プロパティ経由で安全に割り当て）
+  inputDate.value = tx?.used_date || today;
+  inputAmount.value = tx?.amount || '';
+  inputShop.value = tx?.shop || '';
+  inputCategory.value = tx?.category || '';
+  inputDetail.value = tx?.detail || '';
+  inputBillingDate.value = tx?.billing_date ? formatDate(tx.billing_date) : '';
+
+  // チェックボックスの状態設定
+  checkConfirmed.checked = !!tx?.is_confirmed;
+  checkBookmarked.checked = !!tx?.is_bookmarked;
+
+  // カード選択肢（select）の生成
+  cards.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    if (tx?.card_id === c.id) {
+      opt.selected = true;
+    }
+    selectCard.appendChild(opt);
+  });
+
+  // 編集モード時（かつ再利用でない場合）のみ削除チェックボックスを表示
+  if (isEdit && !tx?._isReuse) {
+    clone.querySelector('.delete-check').style.display = 'block';
+  }
+
+  // 保存ボタンにイベントを設定
+  const saveBtn = clone.querySelector('.btn-save');
+  saveBtn.setAttribute('onclick', `saveTransaction('${tx?.id || ''}')`);
+
+  // DOMへの追加とスクロール制御
+  document.body.appendChild(clone);
   document.body.style.overflow = 'hidden';
 
-  if (tx?.card_id) updateBillingDate();
+  // カード設定済みの場合は引き落とし予定日を自動計算・更新
+  if (tx?.card_id) {
+    updateBillingDate();
+  }
 }
 
 function updateBillingDate() {
@@ -1883,63 +2424,109 @@ function handleTouchEnd(e) {
   }
 }
 
+
 // ==================== ナビ設定画面 ====================
 function renderNavSettings() {
-  return `
-    <h2 style="font-size:16px;font-weight:500;margin-bottom:4px">ナビ設定</h2>
-    <p style="font-size:12px;color:var(--gray-400);margin-bottom:16px">ボトムナビの表示・順番を変更できます</p>
+  const tmplNavSettings = document.getElementById('tmpl-nav-settings');
+  if (!tmplNavSettings) return document.createElement('div');
 
-    <div class="card" style="margin-bottom:16px">
-      <div style="font-size:14px;font-weight:500;margin-bottom:12px">ボトムナビ（表示/非表示・順番）</div>
-      <p style="font-size:12px;color:var(--gray-400);margin-bottom:12px">↑↓ボタンで並び替え、チェックで表示切替</p>
-      ${navSettings.bottomNav.map((n, i) => {
-        const item = ALL_NAV_ITEMS.find(it => it.id === n.id);
-        if (!item) return '';
-        return `
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--gray-200)">
-            <input type="checkbox" ${n.visible ? 'checked' : ''} ${item.required ? 'disabled' : ''}
-              onchange="toggleNavItem(${i})">
-            <i class="ph-bold ${item.icon}" style="color:var(--primary);font-size:18px"></i>
-            <span style="flex:1;font-size:14px">${item.label}</span>
-            <div style="display:flex;gap:4px">
-              <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="moveNavItem(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
-              <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="moveNavItem(${i}, 1)" ${i === navSettings.bottomNav.length - 1 ? 'disabled' : ''}>↓</button>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
+  const clone = tmplNavSettings.content.cloneNode(true);
 
-    <div class="card">
-      <div style="font-size:14px;font-weight:500;margin-bottom:12px">ドロワーメニュー（順番）</div>
-      <p style="font-size:12px;color:var(--gray-400);margin-bottom:12px">↑↓ボタンで並び替え（全項目常に表示）</p>
-      ${navSettings.drawerNav.map((n, i) => {
-        const item = ALL_DRAWER_ITEMS.find(it => it.id === n.id);
-        if (!item) return '';
-        return `
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--gray-200)">
-            <i class="ph-bold ${item.icon}" style="color:var(--primary);font-size:18px"></i>
-            <span style="flex:1;font-size:14px">${item.label}</span>
-            <div style="display:flex;gap:4px">
-              <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="moveDrawerItem(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
-              <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="moveDrawerItem(${i}, 1)" ${i === navSettings.drawerNav.length - 1 ? 'disabled' : ''}>↓</button>
-            </div>
-          </div>
-        `;
-      }).join('')}
-</div>
+  const bottomListContainer = clone.querySelector('.bottom-nav-list');
+  const drawerListContainer = clone.querySelector('.drawer-nav-list');
 
-    <button class="btn btn-danger btn-full" style="margin-top:16px" onclick="resetNavSettings()">
-      <i class="ph-bold ph-arrow-counter-clockwise"></i>　ナビ設定をリセット
-    </button>
-  `;
+  // 1. ボトムナビ一覧の動的生成
+  const tmplBottomItem = document.getElementById('tmpl-nav-setting-bottom-item');
+  if (tmplBottomItem && bottomListContainer) {
+    navSettings.bottomNav.forEach((n, i) => {
+      const item = ALL_NAV_ITEMS.find(it => it.id === n.id);
+      if (!item) return;
+
+      const itemClone = tmplBottomItem.content.cloneNode(true);
+
+      // チェックボックス制御（addEventListenerに修正）
+      const checkEl = itemClone.querySelector('.nav-visible-check');
+      if (checkEl) {
+        checkEl.checked = !!n.visible;
+        if (item.required) checkEl.disabled = true;
+        checkEl.addEventListener('change', () => toggleNavItem(i));
+      }
+
+      // アイコン・ラベル設定
+      const iconEl = itemClone.querySelector('.nav-icon');
+      if (iconEl && item.icon) {
+        iconEl.className = `nav-icon ph-bold ${item.icon}`;
+      }
+
+      const labelEl = itemClone.querySelector('.nav-label');
+      if (labelEl) {
+        labelEl.textContent = item.label || '';
+      }
+
+      // 上下移動ボタンの設定（addEventListenerに修正）
+      const btnUp = itemClone.querySelector('.btn-up');
+      const btnDown = itemClone.querySelector('.btn-down');
+
+      if (btnUp) {
+        if (i === 0) btnUp.disabled = true;
+        btnUp.addEventListener('click', () => moveNavItem(i, -1));
+      }
+
+      if (btnDown) {
+        if (i === navSettings.bottomNav.length - 1) btnDown.disabled = true;
+        btnDown.addEventListener('click', () => moveNavItem(i, 1));
+      }
+
+      bottomListContainer.appendChild(itemClone);
+    });
+  }
+
+  // 2. ドロワーメニュー一覧の動的生成
+  const tmplDrawerItem = document.getElementById('tmpl-drawer-nav-item');
+  if (tmplDrawerItem && drawerListContainer) {
+    navSettings.drawerNav.forEach((n, i) => {
+      const item = ALL_DRAWER_ITEMS.find(it => it.id === n.id);
+      if (!item) return;
+
+      const itemClone = tmplDrawerItem.content.cloneNode(true);
+
+      // アイコン・ラベル設定
+      const iconEl = itemClone.querySelector('.nav-icon');
+      if (iconEl && item.icon) {
+        iconEl.className = `nav-icon ph-bold ${item.icon}`;
+      }
+
+      const labelEl = itemClone.querySelector('.nav-label');
+      if (labelEl) {
+        labelEl.textContent = item.label || '';
+      }
+
+      // 上下移動ボタンの設定
+      const btnUp = itemClone.querySelector('.btn-up');
+      const btnDown = itemClone.querySelector('.btn-down');
+
+      if (btnUp) {
+        if (i === 0) btnUp.disabled = true;
+        btnUp.addEventListener('click', () => moveDrawerItem(i, -1));
+      }
+
+      if (btnDown) {
+        if (i === navSettings.drawerNav.length - 1) btnDown.disabled = true;
+        btnDown.addEventListener('click', () => moveDrawerItem(i, 1));
+      }
+
+      drawerListContainer.appendChild(itemClone);
+    });
+  }
+
+  return clone;
 }
 
+// -------------------- ナビ操作ロジック --------------------
 function resetNavSettings() {
   localStorage.removeItem('nav-settings');
   navSettings = loadNavSettings();
-  renderApp();
-  navigate('settings');
+  renderApp(); // 画面全体（ボトムナビ本体と画面中身）を再描画
   showToast('✅ ナビ設定をリセットしました');
 }
 
@@ -1947,7 +2534,6 @@ function toggleNavItem(index) {
   navSettings.bottomNav[index].visible = !navSettings.bottomNav[index].visible;
   saveNavSettings(navSettings);
   renderApp();
-  navigate('settings');
 }
 
 function moveNavItem(index, direction) {
@@ -1957,7 +2543,6 @@ function moveNavItem(index, direction) {
   [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
   saveNavSettings(navSettings);
   renderApp();
-  navigate('settings');
 }
 
 function moveDrawerItem(index, direction) {
@@ -1967,5 +2552,89 @@ function moveDrawerItem(index, direction) {
   [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
   saveNavSettings(navSettings);
   renderApp();
-  navigate('settings');
 }
+
+
+
+// HTMLの onclick や onchange 等から呼ばれる関数をすべて window に登録
+Object.assign(window, {
+  // ナビゲーション・メニュー系
+  navigate,
+  toggleDrawer,
+  logout,
+  navigateDrawer,
+  checkUpdate,
+
+
+  // モーダル・画面起動系
+  showBankModal,
+  showCardModal,
+  showTransactionModal,
+  showRecurringModal,
+  closeModal,
+  openAddCard,
+  openEditCard,
+  openAddTransaction,
+  openEditTransaction,
+  openAddBank,
+  openEditBank,
+  openAddRecurring,
+  openEditRecurring,
+  
+
+  // 検索・操作系
+  updateSearch,
+  clearSearch,
+  showDeletedTab,
+  toggleNavItem,
+  moveNavItem,
+  moveDrawerItem,
+  resetNavSettings,
+  updateBillingDate,
+  filterSuggest,
+  hideSuggest,
+
+  // アコーディオン・トグル表示系
+  toggleCardGroup,
+  expandAllCards,
+  collapseAllCards,
+  toggleCategoryChart,
+  toggleYear,
+  expandAllYears,
+  collapseAllYears,
+  toggleReservedDetail,
+  changeMonth,
+  goToMonth,
+  collapseAllYears,
+  expandAllYears,
+
+
+  //ホーム画面
+  expandAllCards,
+  collapseAllCards,
+  handleHomeSortChange,
+  toggleHomeSortOrder,
+  openCategoryDetail,
+
+
+  //定期取引・口座処理系
+  processRecurring,
+  processCardBilling,
+  openAddBank,
+  openEditBank,
+  showBankModal,
+
+  // 保存・復元・削除系
+  saveBank,
+  saveCard,
+  saveTransaction,
+  saveRecurring,    
+  restoreCard,
+  permanentDeleteCard,
+  restoreTransaction,
+  permanentDeleteTransaction,
+  reuseTransaction,
+  
+  // 認証・その他
+  login
+});
