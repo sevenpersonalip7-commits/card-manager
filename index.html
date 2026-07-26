@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+ <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>カード管理</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+    <div id="loading-screen" style="position:fixed;inset:0;background:#0f0f1a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999">
+      <div style="margin-bottom:24px">
+        <img src="icon.svg" width="80" height="80" style="border-radius:20px">
+      </div>
+      <div style="font-size:18px;font-weight:500;color:#6ec6cf;margin-bottom:32px">カード管理</div>
+      <div style="width:200px;height:3px;background:#2a2a3e;border-radius:99px;overflow:hidden">
+        <div id="progress-bar" style="height:100%;width:0%;background:#6ec6cf;border-radius:99px;transition:width 0.4s ease"></div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

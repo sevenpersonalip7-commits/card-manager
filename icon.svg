@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a4e"/>
+      <stop offset="100%" stop-color="#0d6e75"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6ec6cf"/>
+      <stop offset="100%" stop-color="#a8dde2"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景 -->
+  <rect width="192" height="192" rx="40" fill="url(#bg)"/>
+  <!-- カード本体 -->
+  <rect x="24" y="52" width="144" height="92" rx="14" fill="url(#card)" opacity="0.95"/>
+  <!-- カード光沢 -->
+  <rect x="24" y="52" width="144" height="40" rx="14" fill="white" opacity="0.1"/>
+  <!-- 磁気ストライプ -->
+  <rect x="24" y="84" width="144" height="18" fill="#0a3a3f" opacity="0.5"/>
+  <!-- チップ -->
+  <rect x="40" y="104" width="30" height="24" rx="5" fill="#f0c040" opacity="0.9"/>
+  <line x1="55" y1="104" x2="55" y2="128" stroke="#c8a030" stroke-width="1.5"/>
+  <line x1="40" y1="116" x2="70" y2="116" stroke="#c8a030" stroke-width="1.5"/>
+  <!-- 右下の決済ロゴ風 -->
+  <circle cx="136" cy="118" r="13" fill="white" opacity="0.3"/>
+  <circle cx="152" cy="118" r="13" fill="white" opacity="0.5"/>
+</svg>
