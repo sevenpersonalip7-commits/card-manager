@@ -2580,6 +2580,7 @@ Object.assign(window, {
   openEditBank,
   openAddRecurring,
   openEditRecurring,
+  selectSuggest,
   
 
   // 検索・操作系
