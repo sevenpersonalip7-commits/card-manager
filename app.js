@@ -312,6 +312,7 @@ function renderPage() {
     // まだテンプレート文字列で返ってくる画面の場合
     el.innerHTML = content;
   }
+    attachSwipeHandlers(); // 追加
 }
 
 
@@ -2370,12 +2371,15 @@ async function checkUpdate() {
     const latestSha = data.sha.substring(0, 7);
     const currentSha = sessionStorage.getItem('app-version');
 
-    // 日時表示更新
+    // 日時表示更新 + コミット情報追加（改行対応）
     const el = document.getElementById('last-updated');
     if (el) {
       const date = new Date(data.commit.committer.date);
       const formatted = `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
-      el.textContent = `最終更新：${formatted}`;
+      
+      const commitMessage = data.commit.message.split('\n')[0];
+      
+      el.innerHTML = `最終更新：${formatted}<br>${latestSha}<br>${commitMessage}`;
     }
 
     if (currentSha === latestSha) {
@@ -2405,8 +2409,6 @@ async function checkUpdate() {
     console.error(e);
   }
 }
-
-
 // ==================== スワイプ処理 ====================
 let touchStartX = 0;
 
@@ -2421,6 +2423,15 @@ function handleTouchEnd(e) {
     changeMonth(1);
   } else {
     changeMonth(-1);
+  }
+}
+
+//追加
+function attachSwipeHandlers() {
+  const monthLabel = document.querySelector('.month-label');
+  if (monthLabel) {
+    monthLabel.addEventListener('touchstart', handleTouchStart, false);
+    monthLabel.addEventListener('touchend', handleTouchEnd, false);
   }
 }
 
@@ -2564,6 +2575,7 @@ Object.assign(window, {
   logout,
   navigateDrawer,
   checkUpdate,
+  attachSwipeHandlers,
 
 
   // モーダル・画面起動系
