@@ -2594,6 +2594,8 @@ Object.assign(window, {
   updateBillingDate,
   filterSuggest,
   hideSuggest,
+  handleTouchStart,
+  handleTouchEnd,
 
   // アコーディオン・トグル表示系
   toggleCardGroup,
