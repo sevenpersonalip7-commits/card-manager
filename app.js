@@ -1229,6 +1229,8 @@ function showRecurringModal(r) {
 }
 
 async function saveRecurring(id) {
+    const btnEl = document.querySelector('.btn-save');
+  await withSaveGuard(btnEl, async () => {
   const name = document.getElementById('rec-name').value.trim();
   const amount = parseInt(document.getElementById('rec-amount').value);
   const bank_account_id = document.getElementById('rec-bank').value || null;
@@ -1263,6 +1265,7 @@ async function saveRecurring(id) {
     showToast('❌ 保存に失敗しました', 'error');
     console.error(e);
   }
+}); // withSaveGuard end\n
 }
 
 
@@ -1534,6 +1537,8 @@ function showBankModal(bank) {
 }
 
 async function saveBank(id) {
+    const btnEl = document.querySelector('.btn-save');
+  await withSaveGuard(btnEl, async () => {
   const name = document.getElementById('bank-name').value.trim();
   const balance = parseInt(document.getElementById('bank-balance').value);
   const is_deleted = document.getElementById('bank-delete')?.checked || false;
@@ -1561,6 +1566,7 @@ async function saveBank(id) {
     showToast('❌ 保存に失敗しました', 'error');
     console.error(e);
   }
+}); // withSaveGuard end\n}
 }
 
 async function processRecurring(paymentId, amount, year, month) {
@@ -2063,8 +2069,9 @@ function showCardModal(card) {
 
 
 async function saveCard(id) {
-  const name = document.getElementById('card-name').value.trim();
-const brand = document.getElementById('card-brand-select').value.trim();
+  const btnEl = document.querySelector('.btn-save');
+  await withSaveGuard(btnEl, async () => {
+  const name = document.getElementById('card-name').value.trim();const brand = document.getElementById('card-brand-select').value.trim();
   const closing_day = parseInt(document.getElementById('card-closing').value);
   const billing_day = parseInt(document.getElementById('card-billing').value);
   const credit_limit = parseInt(document.getElementById('card-limit').value);
@@ -2092,7 +2099,10 @@ try {
     showToast('❌ 保存に失敗しました', 'error');
     console.error(e);
   }
+  }); // withSaveGuard end
 }
+
+
 
 // ==================== トランザクション追加・編集モーダル ====================
 function openAddTransaction() {
@@ -2224,8 +2234,9 @@ function hideSuggest(field) {
 }
 
 async function saveTransaction(id) {
-  const used_date = document.getElementById('tx-date').value;
-  const card_id = document.getElementById('tx-card').value;
+  const btnEl = document.querySelector('.btn-save');
+  await withSaveGuard(btnEl, async () => {
+  const used_date = document.getElementById('tx-date').value;  const card_id = document.getElementById('tx-card').value;
   const amount = parseInt(document.getElementById('tx-amount').value);
   const shop = document.getElementById('tx-shop').value.trim();
   const category = document.getElementById('tx-category').value.trim();
@@ -2263,6 +2274,7 @@ try {
     showToast('❌ 保存に失敗しました', 'error');
     console.error(e);
   }
+  }); // withSaveGuard end
 }
 
 // ==================== 削除・復元 ====================
@@ -2295,6 +2307,51 @@ function closeModal() {
   const overlay = document.querySelector('.modal-overlay');
   if (overlay) overlay.remove();
   document.body.style.overflow = '';
+}
+
+// ==================== 保存処理の二重実行防止・タイムアウト ====================
+let _saveTimer = null;
+
+function lockSaveButton(btnEl) {
+  if (!btnEl) return;
+  btnEl.disabled = true;
+  btnEl.dataset.originalText = btnEl.innerHTML;
+  btnEl.innerHTML = '<i class="ph-bold ph-spinner"></i>　処理中…';
+}
+
+function unlockSaveButton(btnEl) {
+  if (!btnEl) return;
+  btnEl.disabled = false;
+  btnEl.innerHTML = btnEl.dataset.originalText || '保存';
+}
+
+async function withSaveGuard(btnEl, asyncFn) {
+  if (btnEl?.disabled) return; // 二重押し防止
+
+  lockSaveButton(btnEl);
+
+  // 5秒で「まだ処理中」のトースト
+  const warnTimer = setTimeout(() => {
+    showToast('⏳ まだ処理中です。しばらくお待ちください…', 'warning');
+  }, 5000);
+
+  // 10秒でタイムアウト
+  let timedOut = false;
+  const timeoutTimer = setTimeout(() => {
+    timedOut = true;
+    unlockSaveButton(btnEl);
+    showToast('⚠️ タイムアウトしました。再度お試しください', 'warning');
+  }, 10000);
+
+  try {
+    await asyncFn();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    clearTimeout(warnTimer);
+    clearTimeout(timeoutTimer);
+    if (!timedOut) unlockSaveButton(btnEl);
+  }
 }
 
 // ==================== トースト通知 ====================

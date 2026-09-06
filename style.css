@@ -593,3 +593,15 @@ textarea.form-input {
 .suggest-item:active {
   background: var(--gray-100);
 }
+
+/* 詳細テキストの行数制限 */
+.detail-text-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
