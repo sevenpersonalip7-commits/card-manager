@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 
+<!-- ページのメタデータ -->
 <head>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
  <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -12,41 +13,54 @@
   <link rel="stylesheet" href="style.css">
 </head>
 
-
+<!-- ページの本文 -->
 <body>
+  <!-- アプリケーションコンテナ -->
     <div id="app">
+      <!-- ローディング画面 -->
     <div id="loading-screen" style="position:fixed;inset:0;background:#0f0f1a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999">
+      <!-- ローディングアイコン -->
       <div style="margin-bottom:24px">
+        <!-- アイコン画像 -->
         <img src="icon.svg" width="80" height="80" style="border-radius:20px">
       </div>
+      <!-- ローディングテキスト -->
       <div style="font-size:18px;font-weight:500;color:#6ec6cf;margin-bottom:32px">カード管理</div>
+      <!-- プログレスバー -->
       <div style="width:200px;height:3px;background:#2a2a3e;border-radius:99px;overflow:hidden">
         <div id="progress-bar" style="height:100%;width:0%;background:#6ec6cf;border-radius:99px;transition:width 0.4s ease"></div>
       </div>
     </div>
   </div>
 
-<!-- ログイン画面テンプレート -->
+ <!-- ログイン画面テンプレート -->
   <template id="tmpl-login">
+    <!-- ログイン画面の土台 -->
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f0f1a;padding:24px">
+      <!-- ログインフォーム -->
       <div style="width:100%;max-width:360px">
         <div style="text-align:center;margin-bottom:32px">
           <div style="font-size:48px;margin-bottom:12px">💳</div>
           <h1 style="font-size:24px;font-weight:500;color:#6ec6cf">カード管理</h1>
         </div>
-        <div style="background:#1a1a2e;border-radius:16px;padding:24px">
-          <div class="form-group">
+        <!-- ログインフォームの背景とパディング -->
+                <div style="background:#1a1a2e;border-radius:16px;padding:24px">
+          <!-- メールアドレス入力欄 -->
+                  <div class="form-group">
             <label class="form-label">メールアドレス</label>
             <input class="form-input" id="login-email" type="email" placeholder="example@email.com">
           </div>
+          <!-- パスワード入力欄 -->
           <div class="form-group">
             <label class="form-label">パスワード</label>
             <input class="form-input" id="login-password" type="password" placeholder="パスワード">
           </div>
+          <!-- ログインエラーメッセージ -->
           <div id="login-error" style="color:#ff6b6b;font-size:13px;margin-bottom:12px;display:none">
             メールアドレスまたはパスワードが違います
           </div>
-          <button class="btn btn-primary btn-full" onclick="login()">ログイン</button>
+          <!-- ログインボタン -->
+          <button id="btn-login" class="btn btn-primary btn-full" >ログイン</button>
         </div>
       </div>
     </div>
@@ -55,7 +69,8 @@
   <!-- アプリメイン全体のテンプレート -->
 <template id="tmpl-app">
   <div class="header">
-    <button onclick="toggleDrawer()" style="background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:4px 8px">
+    <!-- ハンバーガーメニュー -->
+<button id="btn-hamburger" style="background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:4px 8px">
       <i class="ph-bold ph-list"></i>
     </button>
     <h1>💳 カード管理</h1>
@@ -63,7 +78,7 @@
   </div>
 
   <!-- オーバーレイ -->
-  <div id="drawer-overlay" onclick="toggleDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:150"></div>
+  <div id="drawer-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:150"></div>
 
   <!-- ドロワー -->
   <div id="drawer" style="position:fixed;top:0;left:-280px;width:280px;height:100vh;background:#1a1a2e;z-index:200;transition:left 0.3s ease;padding:0;display:flex;flex-direction:column">
@@ -77,10 +92,10 @@
     
     <div style="padding:16px">
       <div id="last-updated" style="font-size:11px;color:var(--gray-400);text-align:center;margin-bottom:6px"></div>
-      <button onclick="checkUpdate()" class="btn btn-ghost btn-full" style="margin-bottom:8px">
+      <button id="btn-check-update" class="btn btn-ghost btn-full" style="margin-bottom:8px">
         <i class="ph-bold ph-arrow-clockwise"></i> 更新を確認
       </button>      
-      <button onclick="logout()" class="btn btn-danger btn-full">
+      <button id="btn-logout" class="btn btn-danger btn-full">
         <i class="ph-bold ph-sign-out"></i> ログアウト
       </button>
     </div>
@@ -112,18 +127,27 @@
 
 <!-- FAB（＋）ボタン単体のテンプレート -->
 <template id="tmpl-fab">
-  <button class="fab" onclick="openAddTransaction()"><i class="ph-bold ph-plus"></i></button>
+  <button id="btn-fab" class="fab" >
+    <i class="ph-bold ph-plus"></i>
+  </button>
 </template>
+
+
 
 <!-- ホーム画面全体の土台 -->
 <template id="tmpl-home">
   <div>
     <!-- 月切り替えナビ -->
     <div class="month-nav">
-      <button onclick="changeMonth(-1)">‹</button>
-      <span class="month-label" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)" style="padding:12px 24px;cursor:grab"></span>
-      <button onclick="changeMonth(1)">›</button>
+      <button id="btn-prev-month"> &lt;</button>
+     <span class="month-label" style="padding:12px 24px;cursor:grab"></span>
+      <button id="btn-next-month"> &gt;</button>
     </div>
+
+<!--今月ボタン（現在の月を表示）-->
+  <div class="month-sub-nav">
+    <button id="btn-current-month">今月</button>
+  </div>
 
     <!-- 月間合計サマリー -->
     <div class="card">
@@ -134,63 +158,83 @@
  <!-- 一括開閉・並び替え領域 -->
     <div class="toggle-buttons" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px">
       <!-- 開閉ボタン -->
-      <button class="btn btn-ghost" style="flex:1;min-width:70px;font-size:11px;padding:6px 4px" onclick="expandAllCards()">
+      <button id="btn-expand-all" class="btn btn-ghost" style="flex:1;min-width:70px;font-size:11px;padding:6px 4px">
         <i class="ph-bold ph-arrows-out"></i> 全て開く
       </button>
-      <button class="btn btn-ghost" style="flex:1;min-width:70px;font-size:11px;padding:6px 4px" onclick="collapseAllCards()">
+      <button id="btn-collapse-all" class="btn btn-ghost" style="flex:1;min-width:70px;font-size:11px;padding:6px 4px">
         <i class="ph-bold ph-arrows-in"></i> 全て閉じる
       </button>
 
-      <!-- ソート項目選択（※onchange="handleHomeSortChange()" に修正） -->
-      <select id="home-sort-key" onchange="handleHomeSortChange()" style="flex:1.5;min-width:110px;font-size:11px;padding:5px 4px;border-radius:6px;background:var(--gray-200);color:inherit;border:1px solid var(--gray-300)">
-        <option value="amount">金額</option>
-        <option value="dueDate">引き落とし日</option>
-        <option value="name">カード名</option>
-        <option value="count">件数</option>
-      </select>
-
-      <!-- 昇順/降順切替ボタン（※onclick="toggleHomeSortOrder()" に修正） -->
-      <button id="home-sort-order-btn" class="btn btn-ghost" style="font-size:11px;padding:6px 8px" onclick="toggleHomeSortOrder()" title="昇順/降順切り替え">
-        <i class="ph-bold ph-sort-descending" id="home-sort-order-icon"></i> <span id="home-sort-order-text">降順</span>
-      </button>
-    </div>
-
+<!-- ソート項目選択（onchange を削除） -->
+<select id="home-sort-key" style="flex:1.5;min-width:110px;font-size:11px;padding:5px 4px;border-radius:6px;background:var(--gray-200);color:inherit;border:1px solid var(--gray-300)">
+    <option value="dueDate">引き落とし日</option>
+  <option value="amount">金額</option>
+  <option value="name">カード名</option>
+  <option value="count">件数</option>
+</select>
+<!-- 昇順/降順切替ボタン（ついでにIDをつけておく） -->
+<button id="home-sort-order-btn" class="btn btn-ghost" style="font-size:11px;padding:6px 8px" title="昇順/降順切り替え">
+  <i class="ph-bold ph-sort-descending" id="home-sort-order-icon"></i> <span id="home-sort-order-text">昇順</span>
+</button>
     <!-- カテゴリチャート描画領域 -->
-    <div class="chart-container"></div>
-
+    <div class="chart-container" style="width:100%; box-sizing:border-box;"></div>
     <!-- データなし表示（初期状態は隠す） -->
     <div class="no-data card text-center" style="display:none;color:var(--gray-400)">データがありません</div>
-
     <!-- カードグループリスト挿入用 -->
-    <div class="card-groups-container"></div>
+    <div class="card-groups-container"style="width:100%; box-sizing:border-box;"></div>
   </div>
 </template>
 
 
+<!--口座グループのテンプレート-->
+<template id="tmpl-account-group">
+  <div class="account">
+    <!--ヘッダー行-->
+    <div class="account-header">
+      <!-- 1列目：矢印アイコン -->
+      <i class="toggle-icon ph-bold"></i>
+      <!-- 2列目：口座名 -->
+      <span class="account-name"></span>
+      <!-- 3列目：合計金額 -->
+      <span class="account-total-amount"></span>
+    </div>
+    <!-- カードグループ等を入れるコンテナ -->
+    <div class="account-cards-container"></div>
+  </div>
+</template>
+
 <!-- カードラベルグループのテンプレート-->
 <template id="tmpl-card-group">
-  <div class="card" style="width:100%;box-sizing:border-box;padding:0;overflow:hidden">
-    <!-- ヘッダー行（CSS Gridで5列の幅と配置をピシッと強制固定） -->
-    <div class="card-total-row" style="cursor:pointer; display:grid; grid-template-columns: 20px 1fr 50px 45px 85px; align-items:center; gap:8px; padding:12px 16px;">
-      
+  <div class="card-group">
+    <!-- ヘッダー行（CSS Gridで5列の幅と配置を強制固定） -->
+    <div class="card-total-row">
       <!-- 1列目：矢印アイコン -->
       <i class="toggle-icon ph-bold" style="font-size:14px; text-align:center;"></i>
-
       <!-- 2列目：カード名（文字数制限＆超えたら…で自動カット） -->
       <span class="card-name" style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;"></span>
-
       <!-- 3列目：日付（中央寄せ・固定幅50px） -->
       <span class="card-date" style="font-weight:500; text-align:center; white-space:nowrap;"></span>
-
       <!-- 4列目：件数（中央寄せ・固定幅45px） -->
       <span class="card-count" style="font-weight:500; text-align:center; white-space:nowrap;"></span>
-
       <!-- 5列目：合計金額（右寄せ・固定幅85px） -->
       <span class="card-total-amount" style="font-weight:bold; text-align:right; white-space:nowrap;"></span>
-
     </div>
-
+    <!--ボディ部分-->
     <div class="card-group-body">
+      <!-- カードラベルグループ内のソート部分 -->
+<div class="tmpl-tran-sort-order" style="display:flex; gap:6px; align-items:center; padding:8px 16px; background:var(--gray-100); border-bottom:1px solid var(--gray-300);">
+  <!-- ソート項目選択 -->
+  <select class="home-tran-sort-key" style="flex:1.5;min-width:110px;font-size:11px;padding:5px 4px;border-radius:6px;background:var(--gray-200);color:inherit;border:1px solid var(--gray-300)">
+    <option value="usedDate">利用日</option>
+    <option value="amount">金額</option>
+    <option value="shop">購入先</option>
+  </select>
+  <!-- 昇順/降順切替ボタン -->
+  <button class="btn btn-ghost home-tran-sort-order-btn" style="font-size:11px;padding:6px 8px" title="昇順/降順切り替え">
+    <i class="ph-bold ph-sort-descending home-tran-sort-order-icon"></i> <span class="home-tran-sort-order-text">昇順</span>
+  </button>
+</div>
+<!--明細リスト挿入用-->
       <div class="card-transactions" style="padding:0 16px"></div>
     </div>
   </div>
@@ -203,6 +247,7 @@
       <div class="shop">
         <span class="shop-name"></span>
         <span class="badge"></span>
+        <span class="badge-category"></span>
       </div>
       <div class="date-category" style="font-size:12px;color:var(--gray-400)"></div>
       <div class="tx-detail" style="font-size:12px;color:var(--gray-400);margin-top:2px;display:none"></div>
@@ -211,19 +256,67 @@
   </div>
 </template>
 
+<!-- 定期支払い1行パーツ -->
+<template id="tmpl-home-recurring-item">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-200)">
+    <div>
+    <div style="position:relative;padding-left:10px;text-align:left">
+      <!-- <div style="font-size:14px"> -->
+        <span class="rec-name" style="font-size:14px"></span>
+      <!-- </div> -->
+      <div class="rec-meta" style="font-size:11px;color:var(--gray-400)"></div>
+    </div>
+    </div>
+    <!-- 右側エリア：相対配置にして右端に固定枠を確保 -->
+    <div style="position:relative;padding-right:24px;text-align:right">
+      <div class="rec-amount" style="font-size:14px;font-weight:500;text-align:right"></div>
+    </div>
+  </div>
+</template>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!-- カテゴリグラフ全体の枠組み -->
 <template id="tmpl-category-chart">
-  <div class="card" style="padding:0;overflow:hidden">
-    <div class="chart-header" onclick="toggleCategoryChart()" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;background:var(--gray-200)">
+  <div class="card" style="padding:0;overflow:hidden; width:100%; box-sizing:border-box;">
+    <!-- ヘッダー行：クリックで開閉、右端に合計金額表示 -->
+    <button id="btn-toggle-category-chart" class="chart-header" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;background:var(--gray-200);width:100%;border:none;outline:none;text-align:left;font-family:inherit">
+      <!-- 左側のアイコン＋ラベル --> 
       <div style="display:flex;align-items:center;gap:8px">
+        <!-- アイコン -->
         <i class="toggle-icon ph-bold" style="color:var(--primary);font-size:16px"></i>
-        <span style="font-size:14px;font-weight:500">カテゴリ別集計</span>
+        <!-- ラベル -->
+        <span style="font-size:14px;font-weight:500;color:#ffff">カテゴリ別集計</span>
       </div>
+      <!-- 右端の合計金額表示 -->
       <span class="chart-total-amount" style="font-size:13px;color:var(--gray-400)"></span>
-    </div>
-    <div id="category-chart-body" style="padding:16px">
-      <div class="bars-container"></div>
-    </div>
+    </button>
+      <div id="category-chart-body" style="padding:16px">
+      <div class="bars-container">
+      </div>
+      </div>
   </div>
 </template>
 
@@ -253,7 +346,7 @@
   <div>
     <!-- ヘッダー部分 -->
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-      <button onclick="navigate('home')" style="background:none;border:none;color:var(--primary);font-size:24px;cursor:pointer;padding:4px">
+      <button class="btn-back" style="background:none;border:none;color:var(--primary);font-size:24px;cursor:pointer;padding:4px">
         <i class="ph-bold ph-arrow-left"></i>
       </button>
       <div>
@@ -278,10 +371,10 @@
 
     <!-- 一括開閉ボタン領域（データがある時のみ表示） -->
     <div class="toggle-buttons" style="display:none;gap:8px;margin-bottom:8px">
-      <button class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px" onclick="expandAllYears()">
+      <button  id="btn-expand-all-years" class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px" >
         <i class="ph-bold ph-arrows-out"></i> 全て開く
       </button>
-      <button class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px" onclick="collapseAllYears()">
+      <button id="btn-collapse-all-years" class="btn btn-ghost" style="flex:1;font-size:12px;padding:6px">
         <i class="ph-bold ph-arrows-in"></i> 全て閉じる
       </button>
     </div>
@@ -361,7 +454,7 @@
 <template id="tmpl-recurring">
   <div>
     <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">定期支払い管理</h2>
-    <button class="btn btn-primary btn-full" style="margin-bottom:16px" onclick="openAddRecurring()">
+    <button id="btn-add-recurring" class="btn btn-primary btn-full" style="margin-bottom:16px" >
       ＋ 定期支払いを追加
     </button>
 
@@ -448,8 +541,8 @@
       </div>
 
       <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary btn-save" style="flex:1">保存</button>
+        <button id="btn-cancel" class="btn btn-ghost" style="flex:1" >キャンセル</button>
+        <button id="btn-save-recurring" class="btn btn-primary btn-save" style="flex:1">保存</button>
       </div>
     </div>
   </div>
@@ -464,7 +557,7 @@
 <template id="tmpl-banks">
   <div>
     <h2 style="font-size:16px;font-weight:500;margin-bottom:12px">口座管理</h2>
-    <button class="btn btn-primary btn-full mt-8" onclick="openAddBank()" style="margin-bottom:16px">
+    <button id="btn-add-bank" class="btn btn-primary btn-full mt-8" style="margin-bottom:16px">
       ＋ 口座を追加
     </button>
 
@@ -541,7 +634,7 @@
   <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-200)">
     <div>
       <div style="font-size:14px">
-        <span class="rec-name"></span>
+        <span class="rec-name" style="gap:20px;"></span>
         <span class="badge-off" style="display:none;font-size:11px;color:var(--gray-400);margin-left:4px">停止中</span>
         <span class="badge-processed" style="display:none;font-size:11px;color:var(--success,#2ecc71);margin-left:4px">処理済</span>
       </div>
@@ -598,8 +691,8 @@
       </div>
 
       <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary btn-save" style="flex:1">保存</button>
+        <button id="btn-cancel" class="btn btn-ghost" style="flex:1" >キャンセル</button>
+        <button id="btn-save-bank" class="btn btn-primary btn-save" style="flex:1">保存</button>
       </div>
     </div>
   </div>
@@ -609,7 +702,7 @@
 <template id="tmpl-cards">
   <div>
     <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">カード管理</h2>
-    <button class="btn btn-primary btn-full mt-8" onclick="openAddCard()">＋ カードを追加</button>
+    <button id="btn-add-card" class="btn btn-primary btn-full mt-8" >＋ カードを追加</button>
     
     <div class="mt-16 card-list-container">
       <!-- データなし表示（初期状態は非表示） -->
@@ -703,7 +796,7 @@
           <input class="form-input" id="search-amount-max" type="number" placeholder="例：10000" oninput="updateSearch()">
         </div>
       </div>
-      <button class="btn btn-ghost btn-full" onclick="clearSearch()">
+      <button id="btn-clear-search" class="btn btn-ghost btn-full" >
         <i class="ph-bold ph-x"></i> 条件をクリア
       </button>
     </div>
@@ -741,8 +834,8 @@
     <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">削除済み一覧</h2>
     <div id="deleted-content">
       <div style="display:flex;gap:8px;margin-bottom:12px" id="deleted-tabs">
-        <button class="btn btn-primary" id="tab-cards" onclick="showDeletedTab('cards')">カード</button>
-        <button class="btn btn-ghost" id="tab-transactions" onclick="showDeletedTab('transactions')">利用データ</button>
+        <button id="btn-show-cards" class="btn btn-primary" id="tab-cards" >カード</button>
+        <button id="btn-show-transactions" class="btn btn-ghost" id="tab-transactions" >利用データ</button>
       </div>
       <div id="deleted-list"></div>
     </div>
@@ -822,8 +915,8 @@
       </div>
 
       <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary btn-save" style="flex:1">保存</button>
+        <button id="btn-cancel" class="btn btn-ghost" style="flex:1" >キャンセル</button>
+        <button id="btn-save" class="btn btn-primary btn-save" style="flex:1">保存</button>
       </div>
     </div>
   </div>
@@ -893,8 +986,8 @@
       </div>
 
       <div style="display:flex;gap:8px;margin-top:20px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-primary btn-save" style="flex:1">保存</button>
+        <button id="btn-cancel" class="btn btn-ghost" style="flex:1" >キャンセル</button>
+        <button id="btn-save-modal" class="btn btn-primary btn-save" style="flex:1">保存</button>
       </div>
     </div>
   </div>
@@ -921,7 +1014,7 @@
     </div>
 
     <!-- リセットボタン -->
-    <button class="btn btn-danger btn-full" style="margin-top:16px" onclick="resetNavSettings()">
+    <button id="btn-reset-nav" class="btn btn-danger btn-full" style="margin-top:16px" >
       <i class="ph-bold ph-arrow-counter-clockwise"></i> ナビ設定をリセット
     </button>
   </div>
@@ -956,8 +1049,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js"></script>
 
-<!-- 変更前 -->
-<!-- <script src="app.js"></script>  -->
+
 
 <!-- 変更後 -->
 <script type="module" src="app.js"></script>
