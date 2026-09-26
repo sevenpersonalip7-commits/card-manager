@@ -110,46 +110,66 @@ async function checkAuth() {
 
 // ==================== ログイン画面の描画 ====================
 function renderLogin() {
-　const app = document.getElementById('app');
+  const app = document.getElementById('app');
   const template = document.getElementById('tmpl-login');
-  
   // appの中身を一旦クリア
   app.replaceChildren();
-  
   // テンプレートの中身を複製して#appに追加
   const clone = template.content.cloneNode(true);
-  app.appendChild(clone);
-
-  // ★ ここを追加：テンプレートが画面に展開された後に、ログインボタンのクリックイベントを紐付ける
-  const loginButton = app.querySelector('#btn-login');
-  if (loginButton) {
-    loginButton.addEventListener('click', login);
+  
+  // ✅ ログインボタンのクリックイベントをアタッチ
+  const loginBtn = clone.querySelector('#btn-login');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => {
+      login();
+    });
   }
 
-  // おまけ：パスワード入力欄で「Enterキー」を押したときにもログインできるようにすると便利です
-  const passwordInput = app.querySelector('#login-password');
+  // ✅ Enterキーでも送信できるようにする（UX向上）
+  const emailInput = clone.querySelector('#login-email');
+  const passwordInput = clone.querySelector('#login-password');
+  
   if (passwordInput) {
-    passwordInput.addEventListener('keydown', (e) => {
+    passwordInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         login();
       }
     });
   }
+  
+  app.appendChild(clone);
 }
+
 // ログイン処理
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   const errorEl = document.getElementById('login-error');
+
+  // ✅ 入力値の簡易チェック
+  if (!email || !password) {
+    if (errorEl) {
+      errorEl.textContent = 'メールアドレスとパスワードを入力してください';
+      errorEl.style.display = 'block';
+    }
+    return;
+  }
+
   const { error } = await window._db.auth.signInWithPassword({ email, password });
-// ログインエラーがあればエラーメッセージを表示、なければデータロードしてアプリ描画
+  
+  // ログインエラーがあればエラーメッセージを表示、なければデータロードしてアプリ描画
   if (error) {
-    errorEl.style.display = 'block';
+    if (errorEl) {
+      errorEl.textContent = 'メールアドレスまたはパスワードが違います';
+      errorEl.style.display = 'block';
+    }
   } else {
     await loadData();
     renderApp();
   }
 }
+
+
 // gitバージョン確認
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
