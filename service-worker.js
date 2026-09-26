@@ -1,4 +1,4 @@
-const CACHE_NAME = 'card-manager-v4';
+const CACHE_NAME = 'card-manager-v5';
 const urlsToCache = [
   './',
   './index.html',
