@@ -110,13 +110,31 @@ async function checkAuth() {
 
 // ==================== ログイン画面の描画 ====================
 function renderLogin() {
-  const app = document.getElementById('app');
+　const app = document.getElementById('app');
   const template = document.getElementById('tmpl-login');
+  
   // appの中身を一旦クリア
   app.replaceChildren();
+  
   // テンプレートの中身を複製して#appに追加
   const clone = template.content.cloneNode(true);
   app.appendChild(clone);
+
+  // ★ ここを追加：テンプレートが画面に展開された後に、ログインボタンのクリックイベントを紐付ける
+  const loginButton = app.querySelector('#btn-login');
+  if (loginButton) {
+    loginButton.addEventListener('click', login);
+  }
+
+  // おまけ：パスワード入力欄で「Enterキー」を押したときにもログインできるようにすると便利です
+  const passwordInput = app.querySelector('#login-password');
+  if (passwordInput) {
+    passwordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        login();
+      }
+    });
+  }
 }
 // ログイン処理
 async function login() {
