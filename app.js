@@ -3250,13 +3250,24 @@ async function checkUpdate() {
     const res = await fetch('https://api.github.com/repos/sevenpersonalip7-commits/card-manager/commits/main', {
       cache: 'no-store'
     });
+
+    // ✅ ステータスコードをチェック
+    if (!res.ok) {
+      throw new Error(`GitHub API エラー: ${res.status} ${res.statusText}`);
+    }
+
     const data = await res.json();
-    if (!data.sha) throw new Error('SHA取得失敗');
+
+    // ✅ レスポンスが正常か確認
+    if (!data || !data.sha) {
+      console.error('GitHub API レスポンス:', data);
+      throw new Error('SHA取得失敗：レスポンスが不正です');
+    }
 
     const latestSha = data.sha.substring(0, 7);
     const currentSha = sessionStorage.getItem('app-version');
 
-    // 日時表示更新 + コミット情報追加（改行対応）
+    // 日時表示更新
     const el = document.getElementById('last-updated');
     if (el) {
       const date = new Date(data.commit.committer.date);
@@ -3290,8 +3301,8 @@ async function checkUpdate() {
     }, 1500);
 
   } catch (e) {
-    showToast('⚠️ 更新確認に失敗しました', 'warning');
-    console.error(e);
+    console.error('更新確認エラー:', e);
+    showToast(`⚠️ 更新確認に失敗しました: ${e.message}`, 'warning');
   }
 }
 // ==================== スワイプ処理 ====================
