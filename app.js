@@ -777,7 +777,7 @@ const accountRecurring = targetRecurring.filter(rp => {
         : false;
 
       accountToggleIcon.classList.add(isAccountCollapsed ? 'ph-caret-right' : 'ph-caret-down');
-      accountClone.querySelector('.account-name').textContent = ag.account.name;
+      accountClone.querySelector('.account-name').textContent = '🏦 '+ag.account.name;
       accountClone.querySelector('.account-total-amount').textContent = formatAmount(ag.accountTotal);
 
       // 口座クリックで開閉

@@ -238,22 +238,25 @@ textarea.form-input {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 2px;
+  position: relative; /* 中央配置を安定させるため */
 }
 
 .month-nav button {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
   color: var(--primary);
-  padding: 8px 64px;
+  padding: 8px 24px;
+  flex-shrink: 0;   /* 画面が狭くなってもボタンが潰れないようにする */
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
 .month-nav .month-label {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap; /* 文字の縦への折り返し（圧縮）を防ぐ */
 }
 
 /* 月サブナビ（今月ボタン） */
@@ -270,18 +273,18 @@ textarea.form-input {
   font-size: 14px;
   cursor: pointer;
   color: var(--primary);
-    padding: 6px 24px;
+    padding: 6px 10px;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
 /* サマリー */
 .summary-amount {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--primary);
   text-align: center;
-  margin: 8px 0;
+  margin: 2px 0;
 }
 
 .summary-sub {
@@ -434,7 +437,7 @@ textarea.form-input {
 .card-total-row {
   display: grid; /* flexからgridに変更 */
   /* 各列の幅を明示的に指定（例：アイコン、名前、日付、件数、金額） */
-  grid-template-columns: 20px 1fr 20px 20px 120px; 
+  grid-template-columns: 10px 1fr 16px 16px 120px; 
   align-items: center;
   gap: 20px; /* 項目間の隙間 */
   background: var(--primary-light);
@@ -445,7 +448,7 @@ textarea.form-input {
   width: 100%;
   box-sizing: border-box;
   cursor: pointer;
-  padding: 12px 16px;
+  padding: 10px 10px;
 }
 /* 矢印アイコン */
 .card-total-row .toggle-icon{
