@@ -420,7 +420,7 @@ textarea.form-input {
   gap: 0;
   width: 95%;
   margin-left: auto;  /* もし画面中央に寄せたい場合はこれもあると便利です */
-  margin-right: auto; /* 左右の中央寄せ */
+  /*margin-right: auto;*/ /* 左右の中央寄せ */
 }
 
 /* カードラベルグループ全体 */
@@ -434,7 +434,7 @@ textarea.form-input {
 .card-total-row {
   display: grid; /* flexからgridに変更 */
   /* 各列の幅を明示的に指定（例：アイコン、名前、日付、件数、金額） */
-  grid-template-columns: 20px 1fr 30px 20px 120px; 
+  grid-template-columns: 20px 1fr 20px 20px 120px; 
   align-items: center;
   gap: 20px; /* 項目間の隙間 */
   background: var(--primary-light);
