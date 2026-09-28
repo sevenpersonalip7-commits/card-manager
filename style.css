@@ -331,7 +331,7 @@ textarea.form-input {
   flex-wrap: wrap;
   gap: 4px; /* 間隔を狭めてコンパクトに */
   font-size: 13px; /* 少しだけ文字を小さくしてスマートに */
-  font-weight: 400; /* 太すぎずすっきりした印象に */
+  font-weight: 500; /* 太すぎずすっきりした印象に */
 }
 
 .shop-name {
@@ -357,7 +357,7 @@ textarea.form-input {
    ========================================== */
 .transaction-amount {
   font-size: 14px; /* 大きすぎず小さすぎない絶妙なサイズ感 */
-  font-weight: 400; /* 太字をやめてスマートで洗練された印象に */
+  font-weight: 500; /* 太字をやめてスマートで洗練された印象に */
   color: var(--gray-800);
   white-space: nowrap; /* 改行を完全に防止 */
   flex-shrink: 0;
@@ -374,7 +374,7 @@ textarea.form-input {
   padding: 0px 5px; /* 上下左右の余白を削る */
   border-radius: 4px; /* 丸みを少し抑えてシャープに */
   font-size: 9px; /* 極小サイズで主張しすぎないように */
-  font-weight: 400;
+  font-weight: 500;
   height: 16px;
   line-height: 1;
 }
@@ -448,7 +448,7 @@ textarea.form-input {
 /* 2列目：口座名（超えたら…でカット） */
 .account-header .account-name {
   font-size: 14px; /* お好みで調整 */
-  font-weight: 400;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -519,7 +519,7 @@ textarea.form-input {
 
 /* 3列目：日付 */
 .card-total-row .card-date {
-  font-weight: 500;
+  font-weight: 550;
   font-size: 12px;
   text-align: center;
   white-space: nowrap;
@@ -528,7 +528,7 @@ textarea.form-input {
 
 /* 4列目：件数 */
 .card-total-row .card-count {
-  font-weight: 500;
+  font-weight: 550;
   font-size: 12px;
   text-align: center;
   white-space: nowrap;
@@ -538,7 +538,7 @@ textarea.form-input {
 /* 5列目：合計金額 */
 .card-total-row .card-total-amount {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 550;
   text-align: right;
   white-space: nowrap;
 }
@@ -611,7 +611,7 @@ textarea.form-input {
 /* 定期支払い名 */
 .home-recurring-info .rec-name {
   font-size: 12px; /* 少し小さめに抑えてスマートに */
-  font-weight: 500;
+  font-weight: 550;
   color: var(--gray-800);
   white-space: nowrap;
   overflow: hidden;
@@ -638,7 +638,7 @@ textarea.form-input {
 
 .home-recurring-right .rec-amount {
   font-size: 14px;
-  font-weight: 500; /* 太字を抑えて洗練された印象に */
+  font-weight: 550; /* 太字を抑えて洗練された印象に */
   color: var(--gray-800);
   white-space: nowrap;
   text-align: right;
