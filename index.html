@@ -203,39 +203,39 @@
   </div>
 </template>
 
-<!-- カードラベルグループのテンプレート-->
+<!-- カードラベルグループのテンプレート -->
 <template id="tmpl-card-group">
   <div class="card-group">
-    <!-- ヘッダー行（CSS Gridで5列の幅と配置を強制固定） -->
+    <!-- ヘッダー行 -->
     <div class="card-total-row">
       <!-- 1列目：矢印アイコン -->
-      <i class="toggle-icon ph-bold" style="font-size:12px; text-align:center;"></i>
-      <!-- 2列目：カード名（文字数制限＆超えたら…で自動カット） -->
-      <span class="card-name" style="font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;"></span>
-      <!-- 3列目：日付（中央寄せ・固定幅50px） -->
-      <span class="card-date" style="font-weight:500; text-align:center; white-space:nowrap;"></span>
-      <!-- 4列目：件数（中央寄せ・固定幅45px） -->
-      <span class="card-count" style="font-weight:500; text-align:center; white-space:nowrap;"></span>
-      <!-- 5列目：合計金額（右寄せ・固定幅85px） -->
-      <span class="card-total-amount" style="font-weight:bold; text-align:right; white-space:nowrap;"></span>
+      <i class="toggle-icon ph-bold"></i>
+      <!-- 2列目：カード名 -->
+      <span class="card-name"></span>
+      <!-- 3列目：日付 -->
+      <span class="card-date"></span>
+      <!-- 4列目：件数 -->
+      <span class="card-count"></span>
+      <!-- 5列目：合計金額 -->
+      <span class="card-total-amount"></span>
     </div>
-    <!--ボディ部分-->
+    
+    <!-- ボディ部分 -->
     <div class="card-group-body">
       <!-- カードラベルグループ内のソート部分 -->
-<div class="tmpl-tran-sort-order" style="display:flex; gap:6px; align-items:center; padding:8px 16px; background:var(--gray-100); border-bottom:1px solid var(--gray-300);">
-  <!-- ソート項目選択 -->
-  <select class="home-tran-sort-key" style="flex:1.5;min-width:110px;font-size:11px;padding:5px 4px;border-radius:6px;background:var(--gray-200);color:inherit;border:1px solid var(--gray-300)">
-    <option value="usedDate">利用日</option>
-    <option value="amount">金額</option>
-    <option value="shop">購入先</option>
-  </select>
-  <!-- 昇順/降順切替ボタン -->
-  <button class="btn btn-ghost home-tran-sort-order-btn" style="font-size:11px;padding:6px 8px" title="昇順/降順切り替え">
-    <i class="ph-bold ph-sort-descending home-tran-sort-order-icon"></i> <span class="home-tran-sort-order-text">昇順</span>
-  </button>
-</div>
-<!--明細リスト挿入用-->
-      <div class="card-transactions" style="padding:0 16px"></div>
+      <div class="tmpl-tran-sort-order">
+        <select class="home-tran-sort-key">
+          <option value="usedDate">利用日</option>
+          <option value="amount">金額</option>
+          <option value="shop">購入先</option>
+        </select>
+        <button class="btn btn-ghost home-tran-sort-order-btn" title="昇順/降順切り替え">
+          <i class="ph-bold ph-sort-descending home-tran-sort-order-icon"></i> 
+          <span class="home-tran-sort-order-text">昇順</span>
+        </button>
+      </div>
+      <!-- 明細リスト挿入用 -->
+      <div class="card-transactions"></div>
     </div>
   </div>
 </template>
@@ -928,36 +928,34 @@
     <div class="modal">
       <div class="modal-title"></div>
 
-      <div class="form-group">
-        <label class="form-label">利用日 *</label>
-        <input class="form-input" id="tx-date" type="date" onchange="updateBillingDate()">
-      </div>
+<div class="form-group">
+  <label class="form-label">利用日 *</label>
+  <input class="form-input" id="tx-date" type="date">
+</div>
 
-      <div class="form-group">
-        <label class="form-label">カード *</label>
-        <select class="form-input" id="tx-card" onchange="updateBillingDate()">
-          <option value="">選択してください</option>
-        </select>
-      </div>
+<div class="form-group">
+  <label class="form-label">カード *</label>
+  <select class="form-input" id="tx-card">
+    <option value="">選択してください</option>
+  </select>
+</div>
 
       <div class="form-group">
         <label class="form-label">金額（円） *</label>
         <input class="form-input" id="tx-amount" type="number" placeholder="例：3000">
       </div>
 
-      <div class="form-group suggest-wrap">
-        <label class="form-label">購入先</label>
-        <input class="form-input" id="tx-shop" placeholder="例：Amazon"
-          oninput="filterSuggest('shop')" onfocus="filterSuggest('shop')" onblur="hideSuggest('shop')" autocomplete="off">
-        <div class="suggest-list" id="shop-suggest"></div>
-      </div>
+<div class="form-group suggest-wrap">
+  <label class="form-label">購入先</label>
+  <input class="form-input" id="tx-shop" placeholder="例：Amazon" autocomplete="off">
+  <div class="suggest-list" id="shop-suggest"></div>
+</div>
 
-      <div class="form-group suggest-wrap">
-        <label class="form-label">カテゴリ</label>
-        <input class="form-input" id="tx-category" placeholder="例：食費"
-          oninput="filterSuggest('category')" onfocus="filterSuggest('category')" onblur="hideSuggest('category')" autocomplete="off">
-        <div class="suggest-list" id="category-suggest"></div>
-      </div>
+<div class="form-group suggest-wrap">
+  <label class="form-label">カテゴリ</label>
+  <input class="form-input" id="tx-category" placeholder="例：食費" autocomplete="off">
+  <div class="suggest-list" id="category-suggest"></div>
+</div>
 
       <div class="form-group">
         <label class="form-label">詳細</label>

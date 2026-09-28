@@ -182,9 +182,17 @@ body {
   width: 100vw;
   max-width: 100vw;
   max-height: 90vh;
+  
+  /* 修正前（サジェストが隠れる） */
+  /* overflow-y: auto;
+  overflow-x: hidden; */
+  
+  /* 修正後（z-index更高い要素が親のoverflow-hiddenを抜ける） */
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;  /* ← hidden から visible に変更 */
   box-sizing: border-box;
+  position: relative;
+  z-index: 201;  /* モーダルオーバーレイより高く */
 }
 
 .modal-title {
@@ -426,74 +434,122 @@ textarea.form-input {
   /*margin-right: auto;*/ /* 左右の中央寄せ */
 }
 
-/* カードラベルグループ全体 */
+/* ==========================================
+   カードラベルグループ全体
+   ========================================== */
 .card-group {
-
   box-sizing: border-box;
   padding: 0;
   overflow: hidden;
+  margin-bottom: 8px;
 }
-/* カード合計行 */
+
+/* カード合計行（CSS Grid） */
 .card-total-row {
-  display: grid; /* flexからgridに変更 */
-  /* 各列の幅を明示的に指定（例：アイコン、名前、日付、件数、金額） */
-  grid-template-columns: 10px 1fr 16px 16px 120px; 
+  display: grid;
+  /* アイコンの幅を詰めて、隙間(gap)もコンパクトにする */
+  grid-template-columns: 14px 1fr auto auto 110px;
   align-items: center;
-  gap: 20px; /* 項目間の隙間 */
+  gap: 8px; /* 隙間をさらに詰めてカード名を広く確保 */
   background: var(--primary-light);
   border-left: 10px solid var(--primary);
   color: var(--gray-100);
   border-radius: 8px;
-  margin-bottom: 8px;
   width: 100%;
   box-sizing: border-box;
   cursor: pointer;
-  padding: 10px 10px;
+  padding: 10px 10px 10px 6px; /* 左側のパディングを少し削ってアイコンを左端に寄せる */
 }
-/* 矢印アイコン */
-.card-total-row .toggle-icon{
-  font-size: 18px;
+
+/* 1列目：矢印アイコン */
+.card-total-row .toggle-icon {
+  font-size: 14px;
   text-align: center;
+  margin-left: -2px; /* わずかに左へ引っ張る微調整 */
 }
 
-
-.card-total-row .card-total-label {
+/* 2列目：カード名（文字数オーバー時は「…」で省略） */
+.card-total-row .card-name {
+  font-weight: 500;
   font-size: 13px;
-  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0; /* Grid内でテキスト省略を効かせるお呪い */
+}
+
+/* 3列目：日付 */
+.card-total-row .card-date {
+  font-weight: 500;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
   opacity: 0.9;
 }
 
+/* 4列目：件数 */
+.card-total-row .card-count {
+  font-weight: 500;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* 5列目：合計金額 */
 .card-total-row .card-total-amount {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   text-align: right;
-  justify-self: end;
+  white-space: nowrap;
+}
+
+/* ==========================================
+   ボディ部分・ソートエリア
+   ========================================== */
+.card-group-body .tmpl-tran-sort-order {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.card-group-body .home-tran-sort-key {
+  flex: 1.5;
+  min-width: 110px;
+  font-size: 11px;
+  padding: 5px 4px;
+  border-radius: 6px;
+  background: var(--gray-200);
+  color: inherit;
+  border: 1px solid var(--gray-300);
+}
+
+.card-group-body .home-tran-sort-order-btn {
+  font-size: 11px;
+  padding: 6px 8px;
 }
 
 /* トランザクションリストの区切り改善 */
 .card-transactions {
+  padding: 0 16px;
   border-top: 1px solid var(--gray-200);
   margin-top: 4px;
 }
 
-/* フォントウェイト調整 */
+/* ==========================================
+   その他の共通フォント・レイアウト調整
+   ========================================== */
 .card-title, .shop, .modal-title, h2 {
   font-weight: 500;
 }
 
-.summary-amount {
+.summary-amount, .btn, .form-label {
   font-weight: 400;
 }
 
-.btn {
-  font-weight: 400;
-}
-
-.form-label {
-  font-weight: 400;
-}
-
-/* ヘッダー調整 */
 .header {
   display: flex;
   align-items: center;
@@ -505,7 +561,6 @@ textarea.form-input {
   left: 50%;
   transform: translateX(-50%);
 }
-
 /* ドロワーメニュー */
 .drawer-item {
   display: flex;
@@ -694,7 +749,7 @@ textarea.form-input {
   border-radius: 8px;
   max-height: 160px;
   overflow-y: auto;
-  z-index: 50;
+  z-index: 999;  /* ← 200より高くする */
   box-shadow: var(--shadow);
   display: none;
 }
@@ -710,6 +765,10 @@ textarea.form-input {
   border-bottom: 1px solid var(--gray-200);
 }
 
+.suggest-item:hover {
+  background: var(--gray-100);
+}
+
 .suggest-item:last-child {
   border-bottom: none;
 }
@@ -717,6 +776,7 @@ textarea.form-input {
 .suggest-item:active {
   background: var(--gray-100);
 }
+
 
 /* 詳細テキストの行数制限 */
 .detail-text-clamp {

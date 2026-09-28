@@ -33,6 +33,68 @@ const ALL_DRAWER_ITEMS = [
   { id: 'recurring', label: '定期支払い', icon: 'ph-arrows-clockwise' },
   { id: 'deleted', label: '削除済み一覧', icon: 'ph-trash' },
 ];
+
+
+// ==================== ユーティリティ関数 ====================
+async function withSaveGuard(btnEl, asyncFn) {
+  if (!btnEl) {
+    return asyncFn();
+  }
+
+  const originalText = btnEl.textContent;
+  btnEl.disabled = true;
+  btnEl.textContent = '保存中...';
+
+  try {
+    await asyncFn();
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = originalText;
+  }
+}
+
+
+// トースト通知を表示する関数
+function showToast(message, type = 'success', callback = null) {
+  // ✅【追加】既存のトースト通知があれば削除
+  const existingToasts = document.querySelectorAll('.toast');
+  existingToasts.forEach(t => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  });
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  
+  document.body.appendChild(toast);
+  
+  // show クラスを追加（CSSで opacity: 1 になる）
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+  
+  // クリックで閉じる
+  toast.addEventListener('click', () => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      toast.remove();
+      if (callback) callback();
+    }, 300);
+  });
+  
+  // 3秒後に自動削除
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 300);
+    }
+  }, 3000);
+}
+
+
 // ナビ設定のロード・保存関数
 function loadNavSettings() {
   try {
@@ -50,6 +112,18 @@ function saveNavSettings(settings) {
 }
 // ナビ設定の初期ロード
 let navSettings = loadNavSettings();
+
+// ==================== モーダル管理 ====================
+function closeModal() {
+  // ✅ モーダルオーバーレイを全て削除
+  const modals = document.querySelectorAll('.modal-overlay');
+  modals.forEach(m => m.remove());
+  
+  // ✅ スクロール制御を解除
+  document.body.style.overflow = 'auto';
+}
+
+
 
 // ==================== 初期化 ====================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -422,28 +496,41 @@ function renderApp() {
 
 // ==================== 日付ユーティリティ ====================
 function formatDate(date) {
-  const d = new Date(date);
+  // ✅ 既に正しいはず
+  const d = new Date(date);  // Date オブジェクト前提
   const days = ['日','月','火','水','木','金','土'];
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${days[d.getDay()]})`;
 }
 
 function calcBillingDate(usedDate, closingDay, billingDay) {
-  const used = new Date(usedDate);
-  const year = used.getFullYear();
-  const month = used.getMonth();
-  const day = used.getDate();
+  // ✅ 'YYYY-MM-DD' を文字列パースしてローカルタイムゾーンで処理
+  const [yearStr, monthStr, dayStr] = usedDate.split('-');
+  const year = parseInt(yearStr);
+  const month = parseInt(monthStr);  // 1-based (1-12)
+  const day = parseInt(dayStr);
 
-  let billingMonth = month + 1;
-  if (day <= closingDay) billingMonth = month;
+  // 利用日が締め日以前なら当月分、以降なら翌月分
+  let billingMonth = month;
+  if (day > closingDay) {
+    billingMonth = month + 1;
+  }
+
+  // 引き落としは翌月
   billingMonth += 1;
 
-  const billingYear = year + Math.floor(billingMonth / 12);
-  const normalizedMonth = billingMonth % 12;
+  // 年を跨ぐ場合の調整
+  let billingYear = year;
+  if (billingMonth > 12) {
+    billingYear += Math.floor((billingMonth - 1) / 12);
+    billingMonth = ((billingMonth - 1) % 12) + 1;
+  }
 
-  const lastDay = new Date(billingYear, normalizedMonth + 1, 0).getDate();
+  // その月の最終日を取得
+  const lastDay = new Date(billingYear, billingMonth, 0).getDate();
   const actualDay = Math.min(billingDay, lastDay);
 
-  return new Date(billingYear, normalizedMonth, actualDay);
+  // ✅ ローカルタイムゾーンで Date オブジェクト作成
+  return new Date(billingYear, billingMonth - 1, actualDay);
 }
 
 function formatYearMonth(date) {
@@ -1931,8 +2018,6 @@ async function saveRecurring(id) {
 
 
 
-
-// ==================== 口座管理 ====================
 function renderBanks() {
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -1940,6 +2025,14 @@ function renderBanks() {
 
   const tmplBanks = document.getElementById('tmpl-banks');
   const clone = tmplBanks.content.cloneNode(true);
+
+  // 口座追加ボタンのイベント設定
+  const addBankBtn = clone.querySelector('#btn-add-bank');
+  if (addBankBtn) {
+    addBankBtn.addEventListener('click', () => {
+      openAddBank();
+    });
+  }
 
   if (bankAccounts.length === 0) {
     const noDataEl = clone.querySelector('.no-data');
@@ -1953,17 +2046,18 @@ function renderBanks() {
     bankAccounts.forEach(bank => {
       const cardClone = tmplCard.content.cloneNode(true);
 
-      // 口座基本情報（null チェック追加）
       const bankNameEl = cardClone.querySelector('.bank-name');
       if (bankNameEl) bankNameEl.textContent = bank.name;
 
       const bankBalanceEl = cardClone.querySelector('.bank-balance');
       if (bankBalanceEl) bankBalanceEl.textContent = formatAmount(bank.balance);
 
-      // ✅ bank-card が null でないか確認
-      const bankCardEl = cardClone.querySelector('.bank-card');
-      if (bankCardEl) {
-        bankCardEl.addEventListener('click', () => {
+      // 編集ボタンのイベントリスナー
+      const editBtn = cardClone.querySelector('.btn-edit-bank');
+      if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           openEditBank(bank.id);
         });
       }
@@ -1973,25 +2067,37 @@ function renderBanks() {
 
       // 1. 口座に紐付いたカードの計算・表示処理
       const linkedCards = cards.filter(c => c.bank_account_id === bank.id);
+      
+      // 引き落とし日昇順・金額降順でソート
+      const cardBillingData = linkedCards.map(card => {
+        const cardTx = transactions.filter(tx => {
+          if (tx.card_id !== card.id) return false;
+          const billing = calcBillingDate(tx.used_date, card.closing_day, card.billing_day);
+          return isSameMonth(billing, today);
+        });
+        const amount = cardTx.reduce((sum, tx) => sum + tx.amount, 0);
+
+        const billingLastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        const billingDay = Math.min(card.billing_day, billingLastDay);
+
+        return { card, amount, billingDay };
+      }).sort((a, b) => {
+        if (a.billingDay !== b.billingDay) {
+          return a.billingDay - b.billingDay;
+        }
+        return b.amount - a.amount;
+      });
+
       const cardBillingSection = cardClone.querySelector('.card-billing-section');
       const noLinkedCards = cardClone.querySelector('.no-linked-cards');
 
-      if (linkedCards.length > 0) {
+      if (cardBillingData.length > 0) {
         if (cardBillingSection) cardBillingSection.style.display = 'block';
         
-        // ✅ card-billing-list が null でないか確認
         const cardBillingList = cardClone.querySelector('.card-billing-list');
         if (cardBillingList) {
-          linkedCards.forEach(card => {
+          cardBillingData.forEach(({ card, amount, billingDay }) => {
             const cardItemClone = tmplCardItem.content.cloneNode(true);
-            
-            const cardTx = transactions.filter(tx => {
-              if (tx.card_id !== card.id) return false;
-              const billing = calcBillingDate(tx.used_date, card.closing_day, card.billing_day);
-              return isSameMonth(billing, today);
-            });
-            const amount = cardTx.reduce((sum, tx) => sum + tx.amount, 0);
-
             const isProcessed = isCardBillingProcessed(card.id, currentYear, currentMonth);
 
             if (isProcessed) {
@@ -2000,8 +2106,7 @@ function renderBanks() {
               totalUnprocessed += amount;
             }
 
-            const billingLastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-            const billingDay = Math.min(card.billing_day, billingLastDay);
+            // 修正: すでに引数で渡されている billingDay を利用する
             const dateStr = `${currentMonth}/${String(billingDay).padStart(2, '0')}`;
 
             const cardNameEl = cardItemClone.querySelector('.card-name');
@@ -2200,26 +2305,54 @@ function showBankModal(bank) {
   clone.querySelector('.modal-title').textContent = isEdit ? '口座編集' : '口座追加';
 
   // 入力フィールドの初期化
-  const inputName = clone.getElementById('bank-name');
-  const inputBalance = clone.getElementById('bank-balance');
+  const inputName = clone.querySelector('#bank-name');
+  const inputBalance = clone.querySelector('#bank-balance');
 
-  inputName.value = bank?.name || '';
-  inputBalance.value = bank?.balance || '';
+  if (inputName) inputName.value = bank?.name || '';
+  if (inputBalance) inputBalance.value = bank?.balance || '';
 
   // 編集モード時のみ削除チェックボックスを表示
   if (isEdit) {
-    clone.querySelector('.delete-check').style.display = 'block';
+    const deleteCheck = clone.querySelector('.delete-check');
+    if (deleteCheck) deleteCheck.style.display = 'block';
   }
 
-  // 保存ボタンにイベントを設定
-  const saveBtn = clone.querySelector('.btn-save');
-  saveBtn.addEventListener('click', () => {
-    saveBank(bank?.id || null);
-  });
+  // ✅ 既存モーダルを削除して body に追加
+  const existingModals = document.querySelectorAll('.modal-overlay');
+  existingModals.forEach(m => m.remove());
 
-  // DOMへの追加とスクロール制御
   document.body.appendChild(clone);
   document.body.style.overflow = 'hidden';
+
+  // ==================== 【修正】ボタンイベントを body 追加後に設定 ====================
+  setTimeout(() => {
+    // ✅ document から要素を取得
+    const saveBtn = document.querySelector('.btn-save') || document.querySelector('#btn-save-bank');
+    const cancelBtn = document.querySelector('#btn-cancel');
+
+    console.log('🔍 saveBtn:', saveBtn);
+    console.log('🔍 cancelBtn:', cancelBtn);
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        console.log('💾 保存ボタンクリック');
+        saveBank(bank?.id || null);
+      });
+      console.log('✅ 保存ボタンイベント設定完了');
+    } else {
+      console.error('❌ 保存ボタンが見つかりません');
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        console.log('❌ キャンセルボタンクリック');
+        closeModal();
+      });
+      console.log('✅ キャンセルボタンイベント設定完了');
+    } else {
+      console.error('❌ キャンセルボタンが見つかりません');
+    }
+  }, 100);
 }
 
 async function saveBank(id) {
@@ -2821,6 +2954,10 @@ function showCardModal(card) {
   document.body.appendChild(clone);
   document.body.style.overflow = 'hidden';
 }
+
+
+
+
 // カードの保存処理（追加・編集共通）
 async function saveCard(id) {
   // 1. 入力値の取得
@@ -2865,6 +3002,55 @@ try {
   }
   }); // withSaveGuard end
 }
+
+
+// ==================== トランザクション保存 ====================
+async function saveTransaction(id) {
+  const btnEl = document.querySelector('.btn-save');
+  await withSaveGuard(btnEl, async () => {
+    // フォーム値の取得
+    const used_date = document.getElementById('tx-date').value;
+    const card_id = document.getElementById('tx-card').value;
+    const amount = parseInt(document.getElementById('tx-amount').value);
+    const shop = document.getElementById('tx-shop').value.trim();
+    const category = document.getElementById('tx-category').value.trim();
+    const detail = document.getElementById('tx-detail').value.trim();
+    const is_confirmed = document.getElementById('tx-confirmed').checked;
+    const is_bookmarked = document.getElementById('tx-bookmarked').checked;
+    const is_deleted = document.getElementById('tx-delete')?.checked || false;
+
+    // バリデーション
+    if (!used_date || !card_id || !amount) {
+      alert('利用日、カード、金額は必須です');
+      return;
+    }
+
+    try {
+      if (id) {
+        // 更新モード
+        const { error } = await window._db.from('transactions')
+          .update({ used_date, card_id, amount, shop, category, detail, is_confirmed, is_bookmarked, is_deleted, updated_at: new Date() })
+          .eq('id', id);
+        if (error) throw error;
+      } else {
+        // 新規追加モード
+        const { error } = await window._db.from('transactions')
+          .insert({ used_date, card_id, amount, shop, category, detail, is_confirmed, is_bookmarked });
+        if (error) throw error;
+      }
+
+      closeModal();
+      await loadData();
+      renderPage();
+      showToast('✅ 保存しました');
+    } catch (e) {
+      showToast('❌ 保存に失敗しました', 'error');
+      console.error(e);
+    }
+  }); // withSaveGuard end
+}
+
+
 
 
 // ==================== トランザクション追加・編集モーダル ====================
@@ -2959,254 +3145,202 @@ function showTransactionModal(tx) {
     console.error('❌ キャンセルボタン（#btn-cancel）がテンプレート内に見つかりませんでした');
   }
 
-  // 既存の同IDモーダルがあれば削除してから新しく追加（重複防止）
-  const existingModal = document.getElementById('modal-transaction');
-  if (existingModal) existingModal.remove();
-
-  // DOMへの追加と表示処理
-  document.body.appendChild(clone);
-  document.body.style.overflow = 'hidden';
-
-  const modalEl = document.getElementById('modal-transaction') || document.querySelector('.modal');
-  if (modalEl) {
-    modalEl.classList.add('show');
-  }
-
-  // カード設定済みの場合は引き落とし予定日を自動計算・更新
-  if (tx?.card_id && typeof updateBillingDate === 'function') {
-    updateBillingDate();
-  }
-}
 
 
-function updateBillingDate() {
-  const cardId = document.getElementById('tx-card')?.value;
-  const date = document.getElementById('tx-date')?.value;
-  const billingInput = document.getElementById('tx-billing-date');
-  if (!billingInput) return;
+// ✅ 既存モーダルを削除して body に追加
+const existingModals = document.querySelectorAll('.modal-overlay');
+existingModals.forEach(m => m.remove());
 
-  const card = cards.find(c => c.id === cardId);
-  if (card && date) {
-    const billing = calcBillingDate(date, card.closing_day, card.billing_day);
-    billingInput.value = formatDate(billing);
-  } else {
-    billingInput.value = '';
-  }
-}
+document.body.appendChild(clone);
+document.body.style.overflow = 'hidden';
 
-// ==================== カスタムサジェスト ====================
-function filterSuggest(field) {
-  const input = document.getElementById(`tx-${field}`);
-  const listEl = document.getElementById(`${field}-suggest`);
-  if (!input || !listEl) return;
+// ==================== 【修正】サジェスト機能セットアップ ====================
+// ✅ setTimeout で要素を取得（body 追加完了を待つ）
+setTimeout(() => {
+  // ✅ clone ではなく document から取得する
+  const shopInput = document.querySelector('#tx-shop');
+  const shopSuggest = document.querySelector('#shop-suggest');
+  const categoryInput = document.querySelector('#tx-category');
+  const categorySuggest = document.querySelector('#category-suggest');
 
-  const value = input.value.toLowerCase();
-  const source = field === 'shop'
-    ? [...new Set(transactions.map(t => t.shop).filter(Boolean))]
-    : [...new Set(transactions.map(t => t.category).filter(Boolean))];
+  console.log('🔍 shopInput:', shopInput);
+  console.log('🔍 shopSuggest:', shopSuggest);
 
-  const filtered = value
-    ? source.filter(s => s.toLowerCase().includes(value))
-    : source;
+  // 店舗名サジェスト
+  if (shopInput && shopSuggest) {
+    const allShops = [...new Set(
+      transactions.map(t => t.shop).filter(Boolean)
+    )].sort();
 
+    console.log('✅ 利用可能な店舗数:', allShops.length);
+
+   const updateShopSuggest = (value) => {
+  console.log('🔎 検索キーワード:', value);
+  
+  // ✅ 修正：空欄時は全件、入力時はフィルタ
+  const filtered = value.trim() 
+    ? allShops.filter(s => s.toLowerCase().includes(value.toLowerCase())) 
+    : allShops;  // ← 空配列ではなく全件を返す
+
+  console.log('📊 フィルタ後:', filtered.length, '件');
+
+  // ✅ 修正：candidates が 0 件の場合のみ隠す
   if (filtered.length === 0) {
-    listEl.classList.remove('show');
+    shopSuggest.classList.remove('show');
+    shopSuggest.innerHTML = '';
     return;
   }
 
-  listEl.innerHTML = filtered.slice(0, 8).map(item =>
-    `<div class="suggest-item" onmousedown="selectSuggest('${field}', '${item.replace(/'/g, "\\'")}')">${item}</div>`
-  ).join('');
+  // ✅ 表示件数を30件に制限
+  shopSuggest.innerHTML = filtered.slice(0, 30)
+    .map(shop => `<div class="suggest-item">${shop}</div>`)
+    .join('');
 
-  listEl.classList.add('show');
-}
+  shopSuggest.classList.add('show');
+  console.log('✨ サジェスト表示、件数:', filtered.slice(0, 30).length);
 
-function selectSuggest(field, value) {
-  const input = document.getElementById(`tx-${field}`);
-  if (input) input.value = value;
-  hideSuggest(field);
-}
-
-function hideSuggest(field) {
-  setTimeout(() => {
-    const listEl = document.getElementById(`${field}-suggest`);
-    if (listEl) listEl.classList.remove('show');
-  }, 150);
-}
-
-async function saveTransaction(id) {
-  const btnEl = document.querySelector('.btn-save');
-  await withSaveGuard(btnEl, async () => {
-  const used_date = document.getElementById('tx-date').value;  const card_id = document.getElementById('tx-card').value;
-  const amount = parseInt(document.getElementById('tx-amount').value);
-  const shop = document.getElementById('tx-shop').value.trim();
-  const category = document.getElementById('tx-category').value.trim();
-  const detail = document.getElementById('tx-detail').value.trim();
-  const is_confirmed = document.getElementById('tx-confirmed').checked;
-  const is_bookmarked = document.getElementById('tx-bookmarked')?.checked || false;
-  const is_deleted = document.getElementById('tx-delete')?.checked || false;
-
-  if (!used_date || !card_id || !amount) {
-    alert('利用日・カード・金額は必須です');
-    return;
-  }
-
-  const card = cards.find(c => c.id === card_id);
-  const billing = calcBillingDate(used_date, card.closing_day, card.billing_day);
-  const billing_date = billing.toISOString().split('T')[0];
-
-try {
-    if (shop) await window._db.from('suggestions').upsert({ type: 'shop', value: shop });
-    if (category) await window._db.from('suggestions').upsert({ type: 'category', value: category });
-
-    if (id) {
-      const { error } = await window._db.from('transactions').update({ used_date, card_id, amount, shop, category, detail, billing_date, is_confirmed, is_bookmarked, is_deleted, updated_at: new Date() }).eq('id', id);
-      if (error) throw error;
-    } else {
-      const { error } = await window._db.from('transactions').insert({ used_date, card_id, amount, shop, category, detail, billing_date, is_confirmed, is_bookmarked });
-      if (error) throw error;
-    }
-
-    closeModal();
-    await loadData();
-    renderApp();
-    showToast('✅ 保存しました');
-  } catch (e) {
-    showToast('❌ 保存に失敗しました', 'error');
-    console.error(e);
-  }
-  }); // withSaveGuard end
-}
-
-// ==================== 削除・復元 ====================
-async function restoreCard(id) {
-  await window._db.from('cards').update({ is_deleted: false }).eq('id', id);
-  await loadData();
-  showDeletedTab('cards');
-}
-
-async function permanentDeleteCard(id) {
-  if (!confirm('完全に削除します。元に戻せません。よろしいですか？')) return;
-  await window._db.from('cards').delete().eq('id', id);
-  showDeletedTab('cards');
-}
-
-async function restoreTransaction(id) {
-  await window._db.from('transactions').update({ is_deleted: false }).eq('id', id);
-  await loadData();
-  showDeletedTab('transactions');
-}
-
-async function permanentDeleteTransaction(id) {
-  if (!confirm('完全に削除します。元に戻せません。よろしいですか？')) return;
-  await window._db.from('transactions').delete().eq('id', id);
-  showDeletedTab('transactions');
-}
-
-// ==================== モーダルを閉じる ====================
-function closeModal() {
-  console.log('閉じる処理（closeModal）が実行されました');
-
-  // 該当する可能性のあるモーダル要素をすべて取得
-  const modals = document.querySelectorAll('#modal-transaction, .modal-overlay, .modal');
-
-  if (modals.length > 0) {
-    modals.forEach(modal => {
-      console.log('削除対象のモーダル:', modal);
-      modal.remove(); // 見つかった要素をすべて削除
+  // ✅ 各サジェスト項目にクリックイベントを追加
+  shopSuggest.querySelectorAll('.suggest-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      console.log('👉 クリック:', item.textContent);
+      shopInput.value = item.textContent;
+      shopSuggest.classList.remove('show');
     });
-  } else {
-    console.warn('削除対象のモーダル要素が見つかりませんでした');
-  }
 
-  // スクロールロックの解除
-  document.body.style.overflow = '';
-}
-
-// ==================== 保存処理の二重実行防止・タイムアウト ====================
-let _saveTimer = null;
-
-function lockSaveButton(btnEl) {
-  if (!btnEl) return;
-  btnEl.disabled = true;
-  btnEl.dataset.originalText = btnEl.innerHTML;
-  btnEl.innerHTML = '<i class="ph-bold ph-spinner"></i>　処理中…';
-}
-
-function unlockSaveButton(btnEl) {
-  if (!btnEl) return;
-  btnEl.disabled = false;
-  btnEl.innerHTML = btnEl.dataset.originalText || '保存';
-}
-
-async function withSaveGuard(btnEl, asyncFn) {
-  if (btnEl?.disabled) return; // 二重押し防止
-
-  lockSaveButton(btnEl);
-
-  // 5秒で「まだ処理中」のトースト
-  const warnTimer = setTimeout(() => {
-    showToast('⏳ まだ処理中です。しばらくお待ちください…', 'warning');
-  }, 5000);
-
-  // 10秒でタイムアウト
-  let timedOut = false;
-  const timeoutTimer = setTimeout(() => {
-    timedOut = true;
-    unlockSaveButton(btnEl);
-    showToast('⚠️ タイムアウトしました。再度お試しください', 'warning');
-  }, 10000);
-
-  try {
-    await asyncFn();
-  } catch (e) {
-    console.error(e);
-  } finally {
-    clearTimeout(warnTimer);
-    clearTimeout(timeoutTimer);
-    if (!timedOut) unlockSaveButton(btnEl);
-  }
-}
-
-// ==================== トースト通知 ====================
-function showToast(message, type = 'success', onClick = null) {
-  let toast = document.getElementById('toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toast';
-    document.body.appendChild(toast);
-  }
-
-  // ⭕️ 以前登録された古いクリックイベントを取り除く（重複・競合防止）
-  if (toast._clickHandler) {
-    toast.removeEventListener('click', toast._clickHandler);
-    toast._clickHandler = null;
-  }
-
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  toast.style.cursor = onClick ? 'pointer' : 'default';
-
-  // ⭕️ クリック処理がある場合のみ、addEventListenerで安全に登録
-  if (onClick) {
-    toast._clickHandler = () => {
-      onClick();
-      toast.classList.remove('show'); // タップされたら即座にトーストを閉じる
-    };
-    toast.addEventListener('click', toast._clickHandler);
-  }
-
-  requestAnimationFrame(() => {
-    toast.classList.add('show');
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      console.log('🖱️ マウスダウン:', item.textContent);
+      shopInput.value = item.textContent;
+      shopSuggest.classList.remove('show');
+    });
   });
+};
 
-  // タップで更新の場合は長めに表示
-  const duration = onClick ? 8000 : 3000;
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, duration);
-}
+    shopInput.addEventListener('focus', () => {
+      console.log('📍 focus イベント');
+      updateShopSuggest(shopInput.value);
+    });
 
+    shopInput.addEventListener('input', (e) => {
+      console.log('✏️ input イベント:', e.target.value);
+      updateShopSuggest(e.target.value);
+    });
+
+    shopInput.addEventListener('blur', () => {
+      console.log('👋 blur イベント');
+      setTimeout(() => shopSuggest.classList.remove('show'), 200);
+    });
+
+    console.log('✅ 店舗サジェスト初期化完了');
+  } else {
+    console.error('❌ shopInput または shopSuggest が見つかりません', { shopInput, shopSuggest });
+  }
+
+  // カテゴリサジェスト（同じロジック）
+  if (categoryInput && categorySuggest) {
+    const allCategories = [...new Set(
+      transactions.map(t => t.category).filter(Boolean)
+    )].sort();
+
+    console.log('✅ 利用可能なカテゴリ数:', allCategories.length);
+
+   const updateCategorySuggest = (value) => {
+  // ✅ 修正：空欄時は全件、入力時はフィルタ
+  const filtered = value.trim() 
+    ? allCategories.filter(c => c.toLowerCase().includes(value.toLowerCase())) 
+    : allCategories;  // ← 空配列ではなく全件を返す
+
+  // ✅ 修正：candidates が 0 件の場合のみ隠す
+  if (filtered.length === 0) {
+    categorySuggest.classList.remove('show');
+    categorySuggest.innerHTML = '';
+    return;
+  }
+
+  categorySuggest.innerHTML = filtered.slice(0, 30)
+    .map(cat => `<div class="suggest-item">${cat}</div>`)
+    .join('');
+
+  categorySuggest.classList.add('show');
+
+  categorySuggest.querySelectorAll('.suggest-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      categoryInput.value = item.textContent;
+      categorySuggest.classList.remove('show');
+    });
+
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      categoryInput.value = item.textContent;
+      categorySuggest.classList.remove('show');
+    });
+  });
+};
+
+    categoryInput.addEventListener('focus', () => {
+      updateCategorySuggest(categoryInput.value);
+    });
+
+    categoryInput.addEventListener('input', (e) => {
+      updateCategorySuggest(e.target.value);
+    });
+
+    categoryInput.addEventListener('blur', () => {
+      setTimeout(() => categorySuggest.classList.remove('show'), 200);
+    });
+
+    console.log('✅ カテゴリサジェスト初期化完了');
+  } else {
+    console.error('❌ categoryInput または categorySuggest が見つかりません', { categoryInput, categorySuggest });
+  }
+
+}, 100);
+
+// ==================== 【改善】引き落とし予定日の自動計算 ====================
+setTimeout(() => {
+  const inputDateForBilling = document.querySelector('#tx-date');
+  const selectCardForBilling = document.querySelector('#tx-card');
+  const billingDateInput = document.querySelector('#tx-billing-date');
+
+  const updateBillingDateInModal = () => {
+    const cardId = selectCardForBilling?.value;
+    const date = inputDateForBilling?.value;
+
+    if (!billingDateInput || !cardId || !date) return;
+
+    const card = cards.find(c => c.id === cardId);
+    if (card) {
+      const billing = calcBillingDate(date, card.closing_day, card.billing_day);
+      billingDateInput.value = formatDate(billing);
+      console.log('✅ 引き落とし予定日計算:', formatDate(billing));
+    } else {
+      billingDateInput.value = '';
+    }
+  };
+
+  if (selectCardForBilling) {
+    selectCardForBilling.addEventListener('change', () => {
+      console.log('🔄 カード変更');
+      updateBillingDateInModal();
+    });
+  }
+
+  if (inputDateForBilling) {
+    inputDateForBilling.addEventListener('change', () => {
+      console.log('🔄 利用日変更');
+      updateBillingDateInModal();
+    });
+  }
+
+  // 初期値を設定
+  if (tx?.card_id) {
+    updateBillingDateInModal();
+  }
+
+  console.log('✅ 引き落とし予定日の自動計算セットアップ完了');
+}, 100);}
 
 // ==================== ドロワー ====================
 function toggleDrawer() {
