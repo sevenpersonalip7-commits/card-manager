@@ -249,27 +249,22 @@
         <span class="badge"></span>
         <span class="badge-category"></span>
       </div>
-      <div class="date-category" style="font-size:12px;color:var(--gray-400)"></div>
-      <div class="tx-detail" style="font-size:12px;color:var(--gray-400);margin-top:2px;display:none"></div>
+      <div class="date-category tx-meta-text"></div>
+      <div class="tx-detail tx-meta-text" style="display:none"></div>
     </div>
     <div class="transaction-amount"></div>
   </div>
 </template>
 
-<!-- 定期支払い1行パーツ -->
+<!-- 定期支払い1行パーツ（ホーム画面用） -->
 <template id="tmpl-home-recurring-item">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-200)">
-    <div>
-    <div style="position:relative;padding-left:10px;text-align:left">
-      <!-- <div style="font-size:14px"> -->
-        <span class="rec-name" style="font-size:14px"></span>
-      <!-- </div> -->
-      <div class="rec-meta" style="font-size:11px;color:var(--gray-400)"></div>
+  <div class="home-recurring-item">
+    <div class="home-recurring-info">
+      <span class="rec-name"></span>
+      <div class="rec-meta"></div>
     </div>
-    </div>
-    <!-- 右側エリア：相対配置にして右端に固定枠を確保 -->
-    <div style="position:relative;padding-right:24px;text-align:right">
-      <div class="rec-amount" style="font-size:14px;font-weight:500;text-align:right"></div>
+    <div class="home-recurring-right">
+      <div class="rec-amount"></div>
     </div>
   </div>
 </template>
@@ -629,22 +624,22 @@
   </div>
 </template>
 
-<!-- 3. 定期支払い1行パーツ -->
+<!-- 3.定期支払い1行パーツ -->
 <template id="tmpl-bank-recurring-item">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-200)">
-    <div>
-      <div style="font-size:14px">
-        <span class="rec-name" style="gap:20px;"></span>
-        <span class="badge-off" style="display:none;font-size:11px;color:var(--gray-400);margin-left:4px">停止中</span>
-        <span class="badge-processed" style="display:none;font-size:11px;color:var(--success,#2ecc71);margin-left:4px">処理済</span>
+  <div class="recurring-item">
+    <div class="recurring-info">
+      <div class="recurring-main">
+        <span class="rec-name"></span>
+        <span class="badge-off" style="display:none;">停止中</span>
+        <span class="badge-processed" style="display:none;">処理済</span>
       </div>
-      <div class="rec-meta" style="font-size:11px;color:var(--gray-400)"></div>
+      <div class="rec-meta"></div>
     </div>
     <!-- 右側エリア：相対配置にして右端に固定枠を確保 -->
-    <div style="position:relative;padding-right:48px;text-align:right">
-      <div class="rec-amount" style="font-size:14px;font-weight:500"></div>
+    <div class="recurring-right-area">
+      <div class="rec-amount"></div>
       <!-- ボタンは絶対配置で右端に固定（非表示でも金額の位置に影響しない） -->
-      <button class="btn btn-ghost btn-process" style="display:none;position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:11px;padding:4px 8px;white-space:nowrap">処理</button>
+      <button class="btn btn-ghost btn-process" style="display:none;">処理</button>
     </div>
   </div>
 </template>

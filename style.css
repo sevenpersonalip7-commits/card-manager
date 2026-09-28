@@ -301,12 +301,14 @@ textarea.form-input {
   text-align: center;
 }
 
-/* トランザクションリスト */
+/* ==========================================
+   トランザクションリスト（極限スマート版）
+   ========================================== */
 .transaction-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
+  align-items: center; /* センター揃えですっきりと */
+  padding: 6px 0; /* 高さを限界まで狭くして情報密度をアップ */
   border-bottom: 1px solid var(--gray-200);
   cursor: pointer;
 }
@@ -315,29 +317,66 @@ textarea.form-input {
   border-bottom: none;
 }
 
+/* 左側コンテナ */
+.transaction-info {
+  flex: 1;
+  min-width: 0;
+  margin-right: 10px;
+}
+
+/* ショップ名とバッジの行 */
 .transaction-info .shop {
-  font-size: 15px;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px; /* 間隔を狭めてコンパクトに */
+  font-size: 13px; /* 少しだけ文字を小さくしてスマートに */
+  font-weight: 400; /* 太すぎずすっきりした印象に */
 }
 
-.transaction-info .date {
-  font-size: 12px;
-  color: var(--gray-400);
-  margin-top: 2px;
-}
-
-.transaction-amount {
-  font-size: 16px;
-  font-weight: 700;
+.shop-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--gray-800);
 }
 
+/* メタ情報（日付やカテゴリ） */
+.tx-meta-text {
+  font-size: 10px; /* 文字を小さめに設定 */
+  color: var(--gray-400);
+  margin-top: 0px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================
+   金額表示（スタイリッシュ＆ミニマル）
+   ========================================== */
+.transaction-amount {
+  font-size: 14px; /* 大きすぎず小さすぎない絶妙なサイズ感 */
+  font-weight: 400; /* 太字をやめてスマートで洗練された印象に */
+  color: var(--gray-800);
+  white-space: nowrap; /* 改行を完全に防止 */
+  flex-shrink: 0;
+  text-align: right;
+  letter-spacing: -0.2px; /* 数字の間隔を詰めて引き締める */
+}
+
+/* ==========================================
+   バッジのミニマル化
+   ========================================== */
 .badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: 0px 5px; /* 上下左右の余白を削る */
+  border-radius: 4px; /* 丸みを少し抑えてシャープに */
+  font-size: 9px; /* 極小サイズで主張しすぎないように */
+  font-weight: 400;
+  height: 16px;
+  line-height: 1;
 }
 
 .badge-reserved {
@@ -393,7 +432,7 @@ textarea.form-input {
   grid-template-columns: 25px 1fr auto;
   align-items: center;
   gap: 30px;
-  padding: 12px 16px;
+  padding: 10px 10px;
   background: var(--primary);
   color: var(--white);
   border-radius: 8px;
@@ -408,7 +447,7 @@ textarea.form-input {
 }
 /* 2列目：口座名（超えたら…でカット） */
 .account-header .account-name {
-  font-size: 16px; /* お好みで調整 */
+  font-size: 14px; /* お好みで調整 */
   font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
@@ -418,8 +457,8 @@ textarea.form-input {
 }
 /* 3列目：合計金額（確実に右端に寄せる） */
 .account-header .account-total-amount {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
   text-align: right;
   white-space: nowrap;
   justify-self: end; /* Grid内で右端に寄せる */
@@ -498,8 +537,8 @@ textarea.form-input {
 
 /* 5列目：合計金額 */
 .card-total-row .card-total-amount {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
   text-align: right;
   white-space: nowrap;
 }
@@ -538,6 +577,172 @@ textarea.form-input {
   border-top: 1px solid var(--gray-200);
   margin-top: 4px;
 }
+
+
+
+
+
+
+/* ==========================================
+   ホーム画面用 定期支払い1行パーツ（スマート版）
+   ========================================== */
+.home-recurring-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0; /* 高さを抑えてスリムに */
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.home-recurring-item:last-child {
+  border-bottom: none;
+}
+
+/* 左側コンテナ */
+.home-recurring-info {
+  position: relative;
+  padding-left: 6px; /* 左側にわずかなオフセット */
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  margin-right: 10px;
+}
+
+/* 定期支払い名 */
+.home-recurring-info .rec-name {
+  font-size: 12px; /* 少し小さめに抑えてスマートに */
+  font-weight: 500;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* メタ情報（日付や頻度など） */
+.home-recurring-info .rec-meta {
+  font-size: 10px;
+  color: var(--gray-400);
+  margin-top: 1px;
+}
+
+/* ==========================================
+   右側エリア（金額）
+   ========================================== */
+.home-recurring-right {
+  position: relative;
+  padding-right: 8px; /* 右側の余白を少し調整 */
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.home-recurring-right .rec-amount {
+  font-size: 14px;
+  font-weight: 500; /* 太字を抑えて洗練された印象に */
+  color: var(--gray-800);
+  white-space: nowrap;
+  text-align: right;
+  letter-spacing: -0.2px;
+}
+
+
+
+/* ==========================================
+   定期支払い1行パーツ（スマート版）
+   ========================================== */
+.recurring-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0; /* トランザクションリストと合わせたスリムな高さ */
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.recurring-item:last-child {
+  border-bottom: none;
+}
+
+/* 左側コンテナ */
+.recurring-info {
+  flex: 1;
+  min-width: 0;
+  margin-right: 10px;
+}
+
+.recurring-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px; /* 少し小さめに抑えてスマートに */
+}
+
+.rec-name {
+  font-weight: 500;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 停止中・処理済みのバッジ */
+.recurring-main .badge-off {
+  font-size: 10px;
+  color: var(--gray-400);
+  background: var(--gray-200);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.recurring-main .badge-processed {
+  font-size: 10px;
+  color: var(--success, #2ecc71);
+  background: var(--success-light, #e8f8f0);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+/* メタ情報（日付や頻度など） */
+.rec-meta {
+  font-size: 10px;
+  color: var(--gray-400);
+  margin-top: 1px;
+}
+
+/* ==========================================
+   右側エリア（金額と処理ボタン）
+   ========================================== */
+.recurring-right-area {
+  position: relative;
+  padding-right: 48px; /* ボタン用のスペースを確保して金額が重ならないようにする */
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.rec-amount {
+  font-size: 14px;
+  font-weight: 500; /* 太字を抑えてスタイリッシュに */
+  color: var(--gray-800);
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+/* 処理ボタン（絶対配置で右端に固定） */
+.recurring-right-area .btn-process {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  padding: 3px 6px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+
+
+
+
 
 /* ==========================================
    その他の共通フォント・レイアウト調整
