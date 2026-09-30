@@ -15,6 +15,7 @@
   --gray-600: #bbbbcc;
   --gray-800: #eeeeff;
   --white: #ffffff;
+  --black: #000000;
   --shadow: 0 2px 8px rgba(0,0,0,0.4);
   --radius: 12px;
 }
@@ -22,7 +23,7 @@
 body {
   font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
   font-weight: 300;
-  background: #ffffff;
+  background: var(--white);
   color: var(--gray-800);
   min-height: 100vh;
   padding-bottom: 80px;
@@ -790,12 +791,12 @@ textarea.form-input {
 }
 
 .drawer-item:hover {
-  background: #2a2a3e;
+  background: var(--white);
 }
 
 .drawer-active {
   color: var(--primary) !important;
-  background: #2a2a3e;
+  background: var(--white);
 }
 
 .drawer-active i {
