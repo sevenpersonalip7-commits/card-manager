@@ -24,7 +24,7 @@ body {
   font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
   font-weight: 300;
   background: var(--white);
-  color: var(--gray-800);
+  color: var(--black);
   min-height: 100vh;
   padding-bottom: 80px;
   overflow-x: hidden;
