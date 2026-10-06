@@ -988,6 +988,22 @@
 
 <!-- ナビ設定画面の土台 -->
 <template id="tmpl-nav-settings">
+  <div class="card nav-card-spaced">
+  <div class="nav-card-title">テーマカラー</div>
+  <div class="theme-row">
+    <span>メインカラー</span>
+    <input type="color" id="theme-primary">
+  </div>
+  <div class="theme-row">
+    <span>サブカラー</span>
+    <input type="color" id="theme-primary-light">
+  </div>
+  <label class="theme-row">
+    <span>サブカラーを自動で作る</span>
+    <input type="checkbox" id="theme-auto-light">
+  </label>
+  <button id="btn-reset-theme" class="btn btn-ghost btn-full">色をリセット</button>
+</div>
   <div>
     <h2 class="page-title page-title-tight">ナビ設定</h2>
     <p class="page-desc">ボトムナビの表示・順番を変更できます</p>

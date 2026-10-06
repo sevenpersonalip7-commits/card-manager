@@ -34,6 +34,55 @@ const ALL_DRAWER_ITEMS = [
   { id: 'deleted', label: '削除済み一覧', icon: 'ph-trash' },
 ];
 
+const THEME_KEY = 'theme-settings';
+const DEFAULT_THEME = { primary: '#00e8e0', primaryLight: '#76d5d2', autoLight: false };
+
+function loadTheme() {
+  try {
+    return { ...DEFAULT_THEME, ...JSON.parse(localStorage.getItem(THEME_KEY)) };
+  } catch {
+    return { ...DEFAULT_THEME };
+  }
+}
+function saveTheme(t) {
+  localStorage.setItem(THEME_KEY, JSON.stringify(t));
+}
+
+// 白と混ぜて明るい色を作る（サブカラーの自動生成用）
+function mixWithWhite(hex, ratio) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c) => Math.round(c + (255 - c) * ratio);
+  const r = mix((n >> 16) & 255), g = mix((n >> 8) & 255), b = mix(n & 255);
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// 明るい色か判定（文字色を白/黒で切り替えるため）
+function isLightColor(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return lum > 160;
+}
+
+// 実際に使うサブカラーを返す
+function resolveLight(t) {
+  return t.autoLight ? mixWithWhite(t.primary, 0.45) : t.primaryLight;
+}
+
+function applyTheme(t) {
+  const root = document.documentElement;
+  const light = resolveLight(t);
+  root.style.setProperty('--primary', t.primary);
+  root.style.setProperty('--primary-light', light);
+  // それぞれの上に載せる文字色（明るい色なら濃色、暗い色なら白）
+  root.style.setProperty('--on-primary', isLightColor(t.primary) ? '#1a1a2e' : '#ffffff');
+  root.style.setProperty('--on-primary-light', isLightColor(light) ? '#1a1a2e' : '#ffffff');
+}
+
+let themeSettings = loadTheme();
+applyTheme(themeSettings);   // 描画前に1回実行
+
+
+
 
 // ==================== ユーティリティ関数 ====================
 async function withSaveGuard(btnEl, asyncFn) {
@@ -2118,7 +2167,7 @@ function renderBanks() {
             const amountEl = cardItemClone.querySelector('.billing-amount');
             if (amountEl) {
               amountEl.textContent = formatAmount(amount);
-              amountEl.style.color = isProcessed ? 'var(--gray-400)' : 'var(--gray-800)';
+amountEl.style.color = isProcessed ? 'var(--gray-400)' : 'var(--text)';
             }
 
             const badgeProcessed = cardItemClone.querySelector('.badge-card-processed');
@@ -2183,7 +2232,7 @@ function renderBanks() {
           const amountEl = recClone.querySelector('.rec-amount');
           if (amountEl) {
             amountEl.textContent = formatAmount(r.amount);
-            amountEl.style.color = (!r.is_active || isProcessed) ? 'var(--gray-400)' : 'var(--gray-800)';
+            amountEl.style.color = (!r.is_active || isProcessed) ? 'var(--gray-400)' : 'var(--text)';
           }
 
           const btnProcess = recClone.querySelector('.btn-process');
@@ -3551,12 +3600,60 @@ function renderNavSettings() {
         btnDown.addEventListener('click', () => moveDrawerItem(i, 1));
       }
 
+
+const elPrimary = clone.querySelector('#theme-primary');
+const elLight   = clone.querySelector('#theme-primary-light');
+const elAuto    = clone.querySelector('#theme-auto-light');
+const elReset   = clone.querySelector('#btn-reset-theme');
+
+if (elPrimary && elLight && elAuto && elReset) {
+  // 欄の表示を現在の状態に合わせる
+  const syncUI = () => {
+    elPrimary.value = themeSettings.primary;
+    elAuto.checked  = themeSettings.autoLight;
+    elLight.disabled = themeSettings.autoLight;
+    // 自動のときは生成された色、手動のときは保存している手動色を表示
+    elLight.value = resolveLight(themeSettings);
+  };
+  syncUI();
+
+  const commit = () => {
+    applyTheme(themeSettings);
+    saveTheme(themeSettings);
+    syncUI();
+  };
+
+  elPrimary.addEventListener('input', () => {
+    themeSettings.primary = elPrimary.value;
+    commit();   // 自動のときは、メインを動かすとサブも追従して表示が変わる
+  });
+
+  elLight.addEventListener('input', () => {
+    themeSettings.primaryLight = elLight.value;  // 手動の色だけを保存
+    commit();
+  });
+
+  elAuto.addEventListener('change', () => {
+    themeSettings.autoLight = elAuto.checked;
+    commit();
+  });
+
+  elReset.addEventListener('click', () => {
+    themeSettings = { ...DEFAULT_THEME };
+    commit();
+    showToast('✅ 色をリセットしました');
+  });
+}
+
+
       drawerListContainer.appendChild(itemClone);
     });
   }
 
   return clone;
 }
+
+
 
 // -------------------- ナビ操作ロジック --------------------
 function resetNavSettings() {

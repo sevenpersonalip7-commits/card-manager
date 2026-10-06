@@ -8,8 +8,20 @@ Style · CSS
 /* カラーコードの代わりに使える */
 /* 使い方：var(--primary) など */
 :root {
+  /* ユーザー選択色 */
   --primary: #00e8e0;
+  /* サブカラー（ユーザー選択色によって自動変更） */
   --primary-light: #76d5d2;
+  --on-primary:#eeeefff0;
+    /* 文字 */
+  --text: #1a1a2e;
+  --text-sub: #5a5a72;
+  /* メインカラーに合わせて自動で決まる面・枠線 */
+  --surface-muted: color-mix(in srgb, var(--primary) 10%, #ffffff);
+  --border: color-mix(in srgb, var(--primary) 22%, #ffffff);
+  /* 白背景の上に置く「メインカラーの文字」。薄い色を選んでも読めるよう少し暗くする */
+  --primary-text: color-mix(in srgb, var(--primary) 70%, #000000);
+
   --danger: #ff6b6b;
   --success: #51cf66;
   --gray-100: #1a1a2e;
@@ -215,7 +227,7 @@ body {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--gray-600);
+  color: var(--gray-200);
   margin-bottom: 6px;
 }
  
@@ -226,7 +238,7 @@ body {
   border-radius: 8px;
   font-size: 15px;
   background: var(--white);
-  color: var(--gray-800);
+  color: var(--black);
 }
  
 .form-input:focus {
@@ -235,7 +247,7 @@ body {
 }
  
 .form-input[readonly] {
-  background: var(--gray-100);
+  background: var(--on-primary);
   color: var(--gray-400);
 }
  
@@ -315,6 +327,7 @@ textarea.form-input {
   padding: 6px 0; /* 高さを限界まで狭くして情報密度をアップ */
   border-bottom: 1px solid var(--gray-200);
   cursor: pointer;
+
 }
  
 .transaction-item:last-child {
@@ -342,13 +355,13 @@ textarea.form-input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--gray-800);
+  color: var(--gray-100);
 }
  
 /* メタ情報（日付やカテゴリ） */
 .tx-meta-text {
   font-size: 10px; /* 文字を小さめに設定 */
-  color: var(--gray-400);
+  color: var(--gray-200);
   margin-top: 0px;
   line-height: 1.2;
   overflow: hidden;
@@ -362,7 +375,7 @@ textarea.form-input {
 .transaction-amount {
   font-size: 14px; /* 大きすぎず小さすぎない絶妙なサイズ感 */
   font-weight: 500; /* 太字をやめてスマートで洗練された印象に */
-  color: var(--gray-800);
+  color: var(--gray-100);
   white-space: nowrap; /* 改行を完全に防止 */
   flex-shrink: 0;
   text-align: right;
@@ -426,6 +439,10 @@ textarea.form-input {
   box-sizing: border-box;
   padding: 0;
   overflow: hidden;
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  background: var(--white);
 }
  
 /* 口座合計行（上の段・下の段共通、または上の段用） */
@@ -438,9 +455,9 @@ textarea.form-input {
   gap: 30px;
   padding: 10px 10px;
   background: var(--primary);
-  color: var(--white);
-  border-radius: 8px;
-  margin-bottom: 8px;
+  color: var(--gray-100);
+  border-radius: 0;   /* 枠(.account)の角丸に任せる */
+  margin-bottom: 0;
   width: 100%;
   box-sizing: border-box;
 }
@@ -468,13 +485,45 @@ textarea.form-input {
   justify-self: end; /* Grid内で右端に寄せる */
 }
 /* カードグループ等を入れるコンテナ */
+.account,
 .account-cards-container {
+  min-width: 0;
+}
+.account-cards-container {
+  position: relative;   /* ← 追加（ガイド線の基準） */
   display: flex;
   flex-direction: column;
-  gap: 0;
-  width: 95%;
-  margin-left: auto;  /* もし画面中央に寄せたい場合はこれもあると便利です */
-  /*margin-right: auto;*/ /* 左右の中央寄せ */
+  gap: 8px;
+  width: auto;
+  padding: 10px 10px 10px 24px;
+}
+.account-cards-container > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.account-cards-container .card-total-row,
+.account-cards-container .card-transactions,
+.account-cards-container .transaction-item {
+  width: auto;
+}
+/* 金額の右端を、定期支払い行とカード行で揃える */
+.account-cards-container > .home-recurring-item {
+  padding: 6px 10px 6px 8px;
+}
+.account-cards-container .home-recurring-right {
+  padding-right: 0;
+}
+
+/* 親子関係を示す縦のガイド線 */
+.account-cards-container::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--primary-light);
 }
  
 /* ==========================================
@@ -484,7 +533,7 @@ textarea.form-input {
   box-sizing: border-box;
   padding: 0;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
  
 /* カード合計行（CSS Grid） */
@@ -495,8 +544,9 @@ textarea.form-input {
   align-items: center;
   gap: 8px; /* 隙間をさらに詰めてカード名を広く確保 */
   background: var(--primary-light);
-  border-left: 10px solid var(--primary);
-  color: var(--gray-100);
+  /* border-left: 10px solid var(--primary); */
+  border-left-width: 4px;
+  color: var(--gray-200);
   border-radius: 8px;
   width: 100%;
   box-sizing: border-box;
@@ -555,7 +605,7 @@ textarea.form-input {
   gap: 6px;
   align-items: center;
   padding: 8px 16px;
-  background: var(--gray-100);
+  background: var(--white);
   border-bottom: 1px solid var(--gray-300);
 }
  
@@ -565,7 +615,7 @@ textarea.form-input {
   font-size: 11px;
   padding: 5px 4px;
   border-radius: 6px;
-  background: var(--gray-200);
+  background: var(--on-primary);
   color: inherit;
   border: 1px solid var(--gray-300);
 }
@@ -573,11 +623,13 @@ textarea.form-input {
 .card-group-body .home-tran-sort-order-btn {
   font-size: 11px;
   padding: 6px 8px;
+  background: var(--on-primary);
+  color: inherit;
 }
  
 /* トランザクションリストの区切り改善 */
 .card-transactions {
-  padding: 0 16px;
+  padding: 0 8px 0 16px;
   border-top: 1px solid var(--gray-200);
   margin-top: 4px;
 }
@@ -594,7 +646,7 @@ textarea.form-input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0; /* 高さを抑えてスリムに */
+  padding: 6px 10px 6px 6px;
   border-bottom: 1px solid var(--gray-200);
 }
  
@@ -610,6 +662,7 @@ textarea.form-input {
   flex: 1;
   min-width: 0;
   margin-right: 10px;
+  
 }
  
 /* 定期支払い名 */
@@ -635,7 +688,7 @@ textarea.form-input {
    ========================================== */
 .home-recurring-right {
   position: relative;
-  padding-right: 8px; /* 右側の余白を少し調整 */
+  padding-right: 0px; /* 右側の余白を少し調整 */
   text-align: right;
   flex-shrink: 0;
 }
@@ -695,7 +748,7 @@ textarea.form-input {
 .recurring-main .badge-off {
   font-size: 10px;
   color: var(--gray-100);
-  background: var(--gray-800);
+  background: var(--on-primary);
   padding: 1px 4px;
   border-radius: 4px;
 }
@@ -744,7 +797,7 @@ textarea.form-input {
   padding: 3px 6px;
   white-space: nowrap;
   line-height: 1;
-  background: var(--gray-800);
+  background: var(--on-primary);
   color: var(--black);
 }
  
@@ -1073,6 +1126,15 @@ textarea.form-input {
 }
  
 /* ---------- ローディング画面 ---------- */
+#loading-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--white); /* ログイン画面と同じ背景 */
+}
+
 .loading-icon-wrap {
   margin-bottom: 24px;
 }
@@ -1106,7 +1168,7 @@ textarea.form-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gray-800);
+  background: var(--white);
   padding: 24px;
 }
 .login-box {
@@ -1127,7 +1189,7 @@ textarea.form-input {
   color: var(--primary);
 }
 .login-form {
-  background: var(--gray-800);
+  background: var(--on-primary);
   border-radius: 16px;
   padding: 24px;
 }
@@ -1152,7 +1214,7 @@ textarea.form-input {
 #drawer-overlay {
   position: fixed;
   inset: 0;
-  background: var(--gray-800);
+  background: var(--on-primary);
   z-index: 150;
 }
 #drawer {
@@ -1219,7 +1281,7 @@ textarea.form-input {
   min-width: 70px;
   font-size: 11px;
   padding: 6px 4px;
-    background: var(--gray-800);
+    background: var(--on-primary);
     color: var(--gray-100);
 }
 #home-sort-key {
@@ -1228,19 +1290,20 @@ textarea.form-input {
   font-size: 11px;
   padding: 5px 4px;
   border-radius: 6px;
-  background: var(--gray-800);
+  background: var(--on-primary);
   color: var(--gray-100);
   border: 1px solid var(--gray-300);
 }
 #home-sort-order-btn {
   font-size: 11px;
   padding: 6px 8px;
-  background: var(--gray-800);
+  background: var(--on-primary);
   color: var(--gray-100);
 }
 .chart-container,
 .card-groups-container {
-  width: 100%;
+  flex: 1 1 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
  
@@ -1257,7 +1320,7 @@ textarea.form-input {
   align-items: center;
   padding: 14px 16px;
   cursor: pointer;
-  background: var(--gray-800);
+  background: var(--on-primary);
   color: var(--gray-100);
   width: 100%;
   border: none;
@@ -1295,7 +1358,7 @@ textarea.form-input {
   margin-left: 6px;
 }
 .progress-track {
-  background: var(--gray-800);
+  background: var(--on-primary);
   border-radius: 99px;
   height: 6px;
   overflow: hidden;
@@ -1358,7 +1421,7 @@ textarea.form-input {
   align-items: center;
   padding: 14px 16px;
   cursor: pointer;
-  background: var(--white);
+  background: var(--on-primary);
   color: var(--gray-100);
 }
 .year-label {
@@ -1567,7 +1630,7 @@ textarea.form-input {
   font-size: 12px;
   margin-top: 4px;
   padding: 6px 8px;
-  background: var(--gray-800);
+  background: var(--on-primary);
     color: var(--gray-100);
   border-radius: 6px;
 }
@@ -1648,7 +1711,7 @@ textarea.form-input {
   font-size: 11px;
   padding: 4px 8px;
   white-space: nowrap;
-  background: var(--gray-800);
+  background: var(--on-primary);
   color: var(--black);
 }
  
@@ -1720,11 +1783,11 @@ textarea.form-input {
   font-size: 14px;
 }
 .bookmark-actions .btn-edit {
-  background: var(--gray-800);
+  background: var(--on-primary);
   color: var(--gray-200);
 }
 .bookmark-actions .btn-reuse {
-  background: var(--primary-light, var(--gray-800));
+  background: var(--primary-light, var(--on-primary));
   color: var(--white);
 }
  
@@ -1765,7 +1828,23 @@ textarea.form-input {
   gap: 8px;
   margin-top: 8px;
 }
- 
+
+/* メイン色設定 */
+.theme-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+}
+.theme-row input[type="color"] {
+  width: 44px;
+  height: 32px;
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
 /* ---------- ナビ設定 ---------- */
 .page-desc {
   font-size: 12px;
@@ -1811,4 +1890,78 @@ textarea.form-input {
 .btn-down {
   padding: 4px 8px;
   font-size: 12px;
+}
+
+/* 口座画面の金額の文字色 */
+.bank-card .rec-amount,
+.bank-card .billing-amount {
+  color: var(--text);
+}
+
+
+
+
+
+
+
+
+/* ---------- テーマ連動の色 ---------- */
+
+/* 面：ボタン・見出しバー・セレクトなど */
+.btn-ghost,
+.home-toggle-btn,
+#home-sort-order-btn,
+.card-group-body .home-tran-sort-order-btn,
+.recurring-right-area .btn-process,
+.btn-process-card,
+.chart-header,
+.year-header,
+.progress-track,
+.billing-breakdown,
+.login-form,
+.form-input[readonly],
+.recurring-main .badge-off,
+.bookmark-actions .btn-edit {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+#home-sort-key,
+.card-group-body .home-tran-sort-key {
+  background: var(--surface-muted);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.card-group-body .tmpl-tran-sort-order {
+  border-bottom: 1px solid var(--border);
+}
+
+/* メインカラーの上に載る文字 */
+.header,
+#btn-hamburger,
+.btn-primary,
+.fab,
+.account-header {
+  color: var(--on-primary);
+}
+
+/* サブカラーの上に載る文字 */
+.card-total-row,
+.bookmark-actions .btn-reuse {
+  color: var(--on-primary-light);
+}
+.bookmark-actions .btn-reuse {
+  background: var(--primary-light);
+}
+
+/* 白背景の上のメインカラー文字 */
+.summary-amount,
+.btn-back,
+.category-total,
+.bank-balance,
+.year-total-amount,
+.login-title,
+.loading-title,
+.toggle-detail-btn,
+.nav-icon {
+  color: var(--primary-text);
 }
