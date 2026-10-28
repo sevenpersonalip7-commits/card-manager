@@ -232,7 +232,17 @@ body {
 }
  
 .form-input {
-  width: 100%;
+  width: 95%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 15px;
+  background: var(--white);
+  color: var(--black);
+}
+
+.form-inputd {
+  width: 95%;
   padding: 10px 12px;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
