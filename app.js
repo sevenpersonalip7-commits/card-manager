@@ -15,10 +15,10 @@ const ALL_NAV_ITEMS = [
   { id: 'home', label: 'ホーム', icon: 'ph-house', required: true },
   { id: 'monthly', label: '月別', icon: 'ph-calendar-blank' },
   { id: 'reserved', label: '予約', icon: 'ph-list-checks' },
-  { id: 'bookmarks', label: 'ブックマーク', icon: 'ph-bookmark-simple' },
+  { id: 'bookmarks', label: 'ブクマ', icon: 'ph-bookmark-simple' },
   { id: 'search', label: '検索', icon: 'ph-magnifying-glass' },
   { id: 'banks', label: '口座', icon: 'ph-bank' },
-  { id: 'recurring', label: '定期支払い', icon: 'ph-arrows-clockwise' },
+  { id: 'recurring', label: '定期', icon: 'ph-arrows-clockwise' },
   { id: 'cards', label: 'カード', icon: 'ph-credit-card' },
 ];
 
