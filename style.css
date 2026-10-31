@@ -379,7 +379,7 @@ body {
 }
  
 .form-input {
-  width: 60%;
+  width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
@@ -389,7 +389,7 @@ body {
 }
 
 .form-inputd {
-  width: 50%;
+  width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--gray-200);
   border-radius: 8px;
