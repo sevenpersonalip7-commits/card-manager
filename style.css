@@ -147,13 +147,8 @@ body {
 .drawer-overlay {
   display: none; 
   position: fixed;
-  /* inset: 0;   */
+  inset: 0;  
   /* top/left/right/bottom: 0 の省略形 */
-  
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
   background-color: rgba(0, 0, 0, 0.4)!important;
   backdrop-filter: blur(4px); 
   z-index: 1000;
@@ -165,29 +160,34 @@ body {
 }
 
 #drawer {
-    display: flex;
-  flex-direction: column;
   position: fixed;
   top: 0;
-  left: -280px; 
+  bottom: 0;                    /* height: 100vh の代わり */
+  left: -280px;
   width: 280px;
-  bottom: 0;      /* height の代わりにこれ */
-  /* height: 100vh; */
   background-color: #ffffff;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
-  z-index: 1001; 
-  overflow-y: auto;
+  z-index: 1001;
   transition: left 0.3s ease;
+
+  /* 追加：縦flexにしてフッターを下に固定 */
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px); /* ホームバー対策 */
 }
 
+/* メニュー部分だけスクロールさせる */
 #drawer-nav {
   flex: 1;
-  overflow-y: auto; /* メニューが多い場合はここだけスクロール */
+  min-height: 0;                /* flex内でスクロールを効かせるために必要 */
+  overflow-y: auto;
 }
 
+/* ユーザー表示とフッターは縮ませない */
+.drawer-user,
 .drawer-footer {
-  flex-shrink: 0; /* 常に表示される */
+  flex-shrink: 0;
 }
 
 .drawer-item {
