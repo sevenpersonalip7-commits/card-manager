@@ -117,7 +117,7 @@ body {
   max-width: 600px;
   margin: 0 auto;
   padding: 0 3px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
  
@@ -179,7 +179,7 @@ body {
 /* FAB（追加ボタン） */
 .fab {
   position: fixed;
-  bottom: 90px;
+  bottom: 100px;
   right: 10px;
   width: 56px;
   height: 56px;
