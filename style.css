@@ -147,11 +147,14 @@ body {
 .drawer-overlay {
   display: none; 
   position: fixed;
+  /* inset: 0;   */
+  /* top/left/right/bottom: 0 の省略形 */
+  
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.4)!important;
   backdrop-filter: blur(4px); 
   z-index: 1000;
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -166,12 +169,14 @@ body {
   top: 0;
   left: -280px; 
   width: 280px;
-  height: 100vh;
+  bottom: 0;      /* height の代わりにこれ */
+  /* height: 100vh; */
   background-color: #ffffff;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
   z-index: 1001; 
   overflow-y: auto;
   transition: left 0.3s ease;
+  padding-bottom: env(safe-area-inset-bottom, 0px); /* ホームバー対策 */
 }
 
 .drawer-item {
@@ -179,7 +184,7 @@ body {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 14px 20px;
+  padding: 10px 20px;
   background: none;
   border: none;
   color: var(--gray-100);
