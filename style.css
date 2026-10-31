@@ -870,6 +870,7 @@ textarea.form-input {
   cursor: pointer;
   text-align: left;
   transition: background 0.2s;
+  padding-bottom:env(safe-area-inset-bottom, 0px); /* iPhoneのノッチ対応 */
 }
  
 .drawer-item i {
