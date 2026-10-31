@@ -239,26 +239,28 @@ body {
  
 /* モーダル */
 .modal-overlay {
-position: fixed;
+  position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.5);
   z-index: 200;
   display: flex;
   align-items: flex-end;
+  justify-content: center;      /* 中央寄せはここで行う */
   overflow: hidden;
-  overscroll-behavior: contain;   /* 追加：背面のスクロール連鎖を防ぐ */
+  overscroll-behavior: contain;
 }
  
 .modal {
   background: var(--white);
   border-radius: var(--radius) var(--radius) 0 0;
-  padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px));
-  width: 100%;                    /* 100vw → 100% */
-  max-width: 100%;                /* 100vw → 100% */
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  max-width: 600px;
+  /* margin: 0 auto は削除（justify-content で中央寄せするため） */
   max-height: 90vh;
-  max-height: 90dvh;              /* 追加：スマホのバー対策 */
+  max-height: 90dvh;
   overflow-y: auto;
-  overflow-x: hidden;             /* visible は効かないので hidden に戻す */
+  overflow-x: hidden;
   overscroll-behavior: contain;
   box-sizing: border-box;
   position: relative;
@@ -275,6 +277,7 @@ position: fixed;
 .form-group {
   margin-bottom: 16px;
   min-width: 0; 
+  max-width: 100%;
   
 }
  
@@ -285,8 +288,11 @@ position: fixed;
   color: var(--gray-200);
   margin-bottom: 6px;
 }
- 
+
+.form-inputd,
 .form-input {
+  box-sizing: border-box;
+  display: block;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -296,18 +302,16 @@ position: fixed;
   font-size: 15px;
   background: var(--white);
   color: var(--black);
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.form-inputd {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--gray-200);
-  border-radius: 8px;
-  font-size: 15px;
-  background: var(--white);
-  color: var(--black);
+input[type="date"].form-input,
+input[type="date"].form-inputd {
+  display: block;
+  min-height: 44px;
 }
- 
+
 .form-input:focus {
   outline: none;
   border-color: var(--primary);
@@ -318,10 +322,24 @@ position: fixed;
   color: var(--gray-400);
 }
  
-textarea.form-input {
+/* textarea.form-input {
   min-height: 200px;
   resize: vertical;
+} */
+
+.form-input,
+.form-inputd,
+textarea.form-input,
+select.form-input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
 }
+
 
 
 
