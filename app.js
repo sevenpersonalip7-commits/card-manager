@@ -1044,7 +1044,8 @@ const accountRecurring = targetRecurring.filter(rp => {
             const badge = txClone.querySelector('.badge');
             badge.className = `badge ${tx.is_confirmed ? 'badge-confirmed' : 'badge-reserved'}`;
             badge.textContent = tx.is_confirmed ? '確定' : '未確定';
-
+              
+            // カテゴリバッジ
             const categoryBadge = txClone.querySelector('.badge-category');
             const catKey = tx.category || '未分類';
             
@@ -1062,8 +1063,8 @@ const accountRecurring = targetRecurring.filter(rp => {
             } else {
               categoryBadge.style.display = 'none';
             }
-
-            txClone.querySelector('.date-category').textContent = `${formatDate(tx.used_date)} ${tx.category || ''}`;
+            // 利用日
+            txClone.querySelector('.date-category').textContent = `${formatDate(tx.used_date)} `;
 
             if (tx.detail) {
               const detailEl = txClone.querySelector('.tx-detail');
@@ -2605,65 +2606,243 @@ function reuseTransaction(id) {
 
 
 
-
 // ==================== 検索 ====================
 let searchState = {
   keyword: '',
   cardId: '',
+  category: '',
+  shop: '',
+  tranYearMonth: '',
   yearMonth: '',
   amountMin: '',
-  amountMax: ''
+  amountMax: '',
+  // ソート状態
+  sortKey: 'created_at', // デフォルトのソートキー
+  sortOrder: 'desc'
 };
+
 
 function renderSearch() {
   const results = getSearchResults();
+  // ★ 共通関数でソートを実行
+  const sortedResults = sortTransactions(results, searchState.sortKey, searchState.sortOrder);
 
   const tmplSearch = document.getElementById('tmpl-search');
   const clone = tmplSearch.content.cloneNode(true);
 
-  // 1. 検索フォームの値設定（searchStateの反映）
+  // 1. 検索フォームの各要素を取得
   const inputKeyword = clone.getElementById('search-keyword');
-  const selectCard = clone.getElementById('search-card');
+  const selectCard = clone.getElementById('search-card'); 
+  const inputCategory = clone.getElementById('search-category');
+  const inputShop = clone.getElementById('search-shop');
+  const suggestShop = clone.getElementById('shop-suggest');          
+  const suggestCategory = clone.getElementById('category-suggest');  
+  const inputTranYearMonth = clone.getElementById('search-tranyearmonth');
   const inputYearMonth = clone.getElementById('search-yearmonth');
   const inputAmountMin = clone.getElementById('search-amount-min');
   const inputAmountMax = clone.getElementById('search-amount-max');
 
-  inputKeyword.value = searchState.keyword || '';
-  inputYearMonth.value = searchState.yearMonth || '';
-  inputAmountMin.value = searchState.amountMin || '';
-  inputAmountMax.value = searchState.amountMax || '';
+  const sortKeySelect = clone.getElementById('home-sort-key');
+  const sortOrderBtn = clone.getElementById('home-sort-order-btn');
+  const sortOrderIcon = clone.getElementById('home-sort-order-icon');
+  const sortOrderText = clone.getElementById('home-sort-order-text');
+
+  // searchState の値をフォームに反映
+  if (inputKeyword) inputKeyword.value = searchState.keyword || '';
+  if (inputCategory) inputCategory.value = searchState.category || '';
+  if (inputShop) inputShop.value = searchState.shop || '';
+  if (inputTranYearMonth) inputTranYearMonth.value = searchState.tranYearMonth || '';
+  if (inputYearMonth) inputYearMonth.value = searchState.yearMonth || '';
+  if (inputAmountMin) inputAmountMin.value = searchState.amountMin || '';
+  if (inputAmountMax) inputAmountMax.value = searchState.amountMax || '';
+
+  // ソートセレクトの設定
+  if (sortKeySelect) {
+    sortKeySelect.value = searchState.sortKey;
+    sortKeySelect.addEventListener('change', (e) => {
+      searchState.sortKey = e.target.value;
+      updateSearch(); // 変更時に再検索＆ソート更新
+    });
+  }
+
+  // 昇順/降順ボタンの設定
+  if (sortOrderBtn && sortOrderIcon && sortOrderText) {
+    if (searchState.sortOrder === 'asc') {
+      sortOrderIcon.className = 'ph-bold ph-sort-ascending';
+      sortOrderText.textContent = '昇順';
+    } else {
+      sortOrderIcon.className = 'ph-bold ph-sort-descending';
+      sortOrderText.textContent = '降順';
+    }
+
+    sortOrderBtn.addEventListener('click', () => {
+      searchState.sortOrder = searchState.sortOrder === 'asc' ? 'desc' : 'asc';
+      // 2. ボタンの見た目（アイコン・テキスト）をその場で即座に切り替え
+      if (searchState.sortOrder === 'asc') {
+        sortOrderIcon.className = 'ph-bold ph-sort-ascending';
+        sortOrderText.textContent = '昇順';
+      } else {
+        sortOrderIcon.className = 'ph-bold ph-sort-descending';
+        sortOrderText.textContent = '降順';
+      }      
+      updateSearch(); // 変更時に再検索＆ソート更新
+    });
+  }
+
+
+
+
 
   // カード選択肢の動的生成
-  cards.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.name;
-    if (searchState.cardId === c.id) {
-      opt.selected = true;
-    }
-    selectCard.appendChild(opt);
-  });
+  if (selectCard) {
+    cards.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      if (searchState.cardId === c.id) {
+        opt.selected = true;
+      }
+      selectCard.appendChild(opt);
+    });
+  }
+
+  // ==========================================
+  // 購入先サジェスト・イベント設定
+  // ==========================================
+  if (inputShop && suggestShop) {
+    const allShops = [...new Set(transactions.map(tx => tx.shop).filter(Boolean))].sort();
+    const updateShopSuggest = (value) => {
+      const filtered = value.trim() 
+        ? allShops.filter(s => s.toLowerCase().includes(value.toLowerCase())) 
+        : allShops;
+
+      if (filtered.length === 0) {
+        suggestShop.classList.remove('show');
+        suggestShop.innerHTML = '';
+        return;
+      }
+
+      suggestShop.innerHTML = filtered.slice(0, 30)
+        .map(shop => `<div class="suggest-item">${shop}</div>`)
+        .join('');
+      suggestShop.classList.add('show');
+
+      suggestShop.querySelectorAll('.suggest-item').forEach(item => {
+        const selectItem = () => {
+          inputShop.value = item.textContent;
+          searchState.shop = item.textContent;
+          suggestShop.classList.remove('show');
+          updateSearch(); 
+        };
+        item.addEventListener('click', selectItem);
+        item.addEventListener('mousedown', (e) => { e.preventDefault(); selectItem(); });
+      });
+    };
+
+    inputShop.addEventListener('input', (e) => {
+      searchState.shop = e.target.value;
+      updateShopSuggest(e.target.value);
+      updateSearch();
+    });
+    inputShop.addEventListener('focus', () => updateShopSuggest(inputShop.value));
+    inputShop.addEventListener('blur', () => setTimeout(() => suggestShop.classList.remove('show'), 200));
+  }
+
+  // ==========================================
+  // カテゴリサジェスト＆イベント設定
+  // ==========================================
+  if (inputCategory && suggestCategory) {
+    const allCategories = [...new Set(transactions.map(t => t.category).filter(Boolean))].sort();
+
+    const updateCategorySuggest = (value) => {
+      const filtered = value.trim() 
+        ? allCategories.filter(c => c.toLowerCase().includes(value.toLowerCase())) 
+        : allCategories;
+
+      if (filtered.length === 0) {
+        suggestCategory.classList.remove('show');
+        suggestCategory.innerHTML = '';
+        return;
+      }
+
+      suggestCategory.innerHTML = filtered.slice(0, 30)
+        .map(cat => `<div class="suggest-item">${cat}</div>`)
+        .join('');
+      suggestCategory.classList.add('show');
+
+      suggestCategory.querySelectorAll('.suggest-item').forEach(item => {
+        const selectItem = () => {
+          inputCategory.value = item.textContent;
+          searchState.category = item.textContent;
+          suggestCategory.classList.remove('show');
+          updateSearch(); 
+        };
+        item.addEventListener('click', selectItem);
+        item.addEventListener('mousedown', (e) => { e.preventDefault(); selectItem(); });
+      });
+    };
+
+    inputCategory.addEventListener('input', (e) => {
+      searchState.category = e.target.value;
+      updateCategorySuggest(e.target.value);
+      updateSearch();
+    });
+    inputCategory.addEventListener('focus', () => updateCategorySuggest(inputCategory.value));
+    inputCategory.addEventListener('blur', () => setTimeout(() => suggestCategory.classList.remove('show'), 200));
+  }
+
+  // ==========================================
+  // 各種検索コントロールのイベント登録
+  // ==========================================
+  if (inputKeyword) inputKeyword.addEventListener('input', updateSearch);
+  if (selectCard) selectCard.addEventListener('change', updateSearch);
+  if (inputCategory) inputCategory.addEventListener('change', updateSearch);
+  if (inputShop) inputShop.addEventListener('change', updateSearch);
+  if (inputTranYearMonth) inputTranYearMonth.addEventListener('change', updateSearch);
+  if (inputYearMonth) inputYearMonth.addEventListener('change', updateSearch);
+  if (inputAmountMin) inputAmountMin.addEventListener('input', updateSearch);
+  if (inputAmountMax) inputAmountMax.addEventListener('input', updateSearch);
+
+  const btnClear = clone.querySelector('#btn-clear-search');
+  if (btnClear) btnClear.addEventListener('click', clearSearch);
 
   // 2. 検索結果件数の表示
-  clone.querySelector('.search-count').textContent = `${results.length}件見つかりました`;
+  const countEl = clone.querySelector('.search-count');
+  if (countEl) countEl.textContent = `${sortedResults.length}件見つかりました`;
 
   // 3. 検索結果リストの表示
   const noDataEl = clone.querySelector('#search-results .no-data');
   const resultsList = clone.querySelector('#search-results .search-results-list');
 
-  if (results.length === 0) {
-    noDataEl.style.display = 'block';
+  if (sortedResults.length === 0) {
+    if (noDataEl) noDataEl.style.display = 'block';
   } else {
+    if (noDataEl) noDataEl.style.display = 'none';
     const tmplItem = document.getElementById('tmpl-search-item');
 
-    results.forEach(tx => {
+    // カテゴリカラーマップの作成
+    const categoryMap = {};
+    sortedResults.forEach(tx => {
+      const key = tx.category || '未分類';
+      if (!categoryMap[key]) categoryMap[key] = 0;
+      categoryMap[key] += tx.amount;
+    });
+    const sortedCategories = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]);
+    const categoryColorMap = {};
+    sortedCategories.forEach(([cat], i) => {
+      categoryColorMap[cat] = CHART_COLORS[i % CHART_COLORS.length];
+    });
+
+    // 検索結果のループ描画（sortedResultsを使用）
+    sortedResults.forEach(tx => {
       const itemClone = tmplItem.content.cloneNode(true);
       const card = cards.find(c => c.id === tx.card_id);
       const itemEl = itemClone.querySelector('.transaction-item');
 
-      // 店舗名 & 確定/未確定バッジ
+      // 店舗名 
       itemClone.querySelector('.shop-name').textContent = (tx.shop || '（購入先未設定）') + ' ';
       
+      // 確定/未確定バッジ
       const badgeEl = itemClone.querySelector('.badge');
       if (tx.is_confirmed) {
         badgeEl.className = 'badge badge-confirmed';
@@ -2673,10 +2852,29 @@ function renderSearch() {
         badgeEl.textContent = '未確定';
       }
 
-      // 利用日・カード名・カテゴリ
-      itemClone.querySelector('.date').textContent = `${formatDate(tx.used_date)} ${card ? card.name : ''} ${tx.category || ''}`;
+      // カテゴリバッジ
+      const badgeCategoryEl = itemClone.querySelector('.badge-category');
+      const catKey = tx.category || '未分類';
+      
+      if (tx.category && badgeCategoryEl) {
+        badgeCategoryEl.textContent = tx.category;
+        badgeCategoryEl.style.display = 'inline-block';
+        badgeCategoryEl.style.fontSize = '10px';
+        badgeCategoryEl.style.padding = '2px 6px';
+        badgeCategoryEl.style.borderRadius = '4px';
+        badgeCategoryEl.style.marginLeft = '4px';
+        
+        const assignedColor = categoryColorMap[catKey] || '#cccccc';
+        badgeCategoryEl.style.backgroundColor = assignedColor;
+        badgeCategoryEl.style.color = '#ffffffeb'; 
+      } else if (badgeCategoryEl) {
+        badgeCategoryEl.style.display = 'none';
+      }
 
-      // 詳細メモ（30文字カット処理）
+      // 利用日・カード名
+      itemClone.querySelector('.date-category').textContent = `${formatDate(tx.used_date)} ${card ? card.name : ''}`;
+
+      // 詳細メモ
       if (tx.detail) {
         const detailEl = itemClone.querySelector('.tx-detail');
         const shortDetail = tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail;
@@ -2687,38 +2885,16 @@ function renderSearch() {
       // 金額
       itemClone.querySelector('.transaction-amount').textContent = formatAmount(tx.amount);
 
-      // クリックイベント設定（編集画面を開く）
-      itemEl.addEventListener('click', () => {
-        openEditTransaction(tx.id);
-      });
+      // クリックイベント（編集画面を開く）
+      if (itemEl) {
+        itemEl.addEventListener('click', () => {
+          openEditTransaction(tx.id);
+        });
+      }
 
-      // ==================== イベント登録 ====================
-
-// キーワード入力
-clone.querySelector('#search-keyword')
-  .addEventListener('input', updateSearch);
-
-// カード選択
-clone.querySelector('#search-card')
-  .addEventListener('change', updateSearch);
-
-// 引き落とし年月
-clone.querySelector('#search-yearmonth')
-  .addEventListener('change', updateSearch);
-
-// 金額下限
-clone.querySelector('#search-amount-min')
-  .addEventListener('input', updateSearch);
-
-// 金額上限
-clone.querySelector('#search-amount-max')
-  .addEventListener('input', updateSearch);
-
-// 条件クリア
-clone.querySelector('#btn-clear-search')
-  .addEventListener('click', clearSearch);
-
-      resultsList.appendChild(itemClone);
+      if (resultsList) {
+        resultsList.appendChild(itemClone);
+      }
     });
   }
 
@@ -2727,48 +2903,85 @@ clone.querySelector('#btn-clear-search')
 
 function getSearchResults() {
   return transactions.filter(tx => {
-    const card = cards.find(c => c.id === tx.card_id);
-
-    // キーワード
+    // 1. キーワード検索（ショップ、カテゴリ、詳細のいずれかに含まれるか）
     if (searchState.keyword) {
       const kw = searchState.keyword.toLowerCase();
-      const hit = (tx.shop || '').toLowerCase().includes(kw) ||
-                  (tx.category || '').toLowerCase().includes(kw) ||
-                  (tx.detail || '').toLowerCase().includes(kw);
-      if (!hit) return false;
+      const matchShop = tx.shop?.toLowerCase().includes(kw);
+      const matchCategory = tx.category?.toLowerCase().includes(kw);
+      const matchDetail = tx.detail?.toLowerCase().includes(kw);
+      if (!matchShop && !matchCategory && !matchDetail) return false;
     }
 
-    // カード
-    if (searchState.cardId && tx.card_id !== searchState.cardId) return false;
-
-    // 引き落とし年月
-    if (searchState.yearMonth && card) {
-      const billing = calcBillingDate(tx.used_date, card.closing_day, card.billing_day);
-      const billingKey = `${billing.getFullYear()}-${String(billing.getMonth()+1).padStart(2,'0')}`;
-      if (billingKey !== searchState.yearMonth) return false;
+    // 2. カード絞り込み
+    if (searchState.cardId && tx.card_id !== searchState.cardId) {
+      return false;
     }
 
-    // 金額下限
-    if (searchState.amountMin && tx.amount < parseInt(searchState.amountMin)) return false;
+    // 3. カテゴリ絞り込み
+    if (searchState.category) {
+      if (!tx.category || !tx.category.toLowerCase().includes(searchState.category.toLowerCase())) {
+        return false;
+      }
+    }
 
-    // 金額上限
-    if (searchState.amountMax && tx.amount > parseInt(searchState.amountMax)) return false;
+    // 4. 購入先絞り込み
+    if (searchState.shop) {
+      if (!tx.shop || !tx.shop.toLowerCase().includes(searchState.shop.toLowerCase())) {
+        return false;
+      }
+    }
 
-    return true;
-  }).sort((a, b) => new Date(b.used_date) - new Date(a.used_date));
+    // 5. 利用年月絞り込み
+    if (searchState.tranYearMonth) {
+      if (!tx.used_date || !tx.used_date.startsWith(searchState.tranYearMonth)) {
+        return false;
+      }
+    }
+
+    // 6. 引き落とし年月絞り込み
+    if (searchState.yearMonth) {
+      const billingDate = tx.billing_date || ''; 
+      if (!billingDate.startsWith(searchState.yearMonth)) {
+        return false;
+      }
+    }
+
+    // 7. 金額（下限）
+    if (searchState.amountMin !== '' && Number(tx.amount) < Number(searchState.amountMin)) {
+      return false;
+    }
+
+    // 8. 金額（上限）
+    if (searchState.amountMax !== '' && Number(tx.amount) > Number(searchState.amountMax)) {
+      return false;
+    }
+
+    return true; 
+  });
 }
-
 
 function updateSearch() {
   // 1. フォームの入力内容を searchState に保持
   searchState.keyword = document.getElementById('search-keyword')?.value || '';
   searchState.cardId = document.getElementById('search-card')?.value || '';
+  searchState.category = document.getElementById('search-category')?.value || '';       
+  searchState.shop = document.getElementById('search-shop')?.value || '';               
+  searchState.tranYearMonth = document.getElementById('search-tranyearmonth')?.value || ''; 
   searchState.yearMonth = document.getElementById('search-yearmonth')?.value || '';
   searchState.amountMin = document.getElementById('search-amount-min')?.value || '';
   searchState.amountMax = document.getElementById('search-amount-max')?.value || '';
 
+  // ソートセレクトの値も確実に同期
+  const sortKeySelect = document.getElementById('home-sort-key');
+  if (sortKeySelect) {
+    searchState.sortKey = sortKeySelect.value;
+  }
+
   const resultsEl = document.getElementById('search-results');
-  const results = getSearchResults();
+  const rawResults = getSearchResults();
+  
+  // ★ updateSearch 側でも共通関数でしっかりとソートをかける
+  const results = sortTransactions(rawResults, searchState.sortKey, searchState.sortOrder);
 
   // 件数表示の更新
   const countEl = document.querySelector('.search-count');
@@ -2778,28 +2991,36 @@ function updateSearch() {
 
   // 2. 検索結果エリアのDOM再構築
   if (resultsEl) {
-    // 既存の中身をクリア
     resultsEl.textContent = '';
 
     if (results.length === 0) {
-      // 該当データなしの表示
       const noDataEl = document.createElement('div');
       noDataEl.className = 'card text-center';
       noDataEl.style.color = 'var(--gray-400)';
       noDataEl.textContent = '条件に一致するデータがありません';
       resultsEl.appendChild(noDataEl);
     } else {
-      // テンプレートを使って結果リストを生成
       const tmplItem = document.getElementById('tmpl-search-item');
       const listContainer = document.createElement('div');
       listContainer.className = 'search-results-list';
+
+      const categoryMap = {};
+      results.forEach(tx => {
+        const key = tx.category || '未分類';
+        if (!categoryMap[key]) categoryMap[key] = 0;
+        categoryMap[key] += tx.amount;
+      });
+      const sortedCategories = Object.entries(categoryMap).sort((a, b) => b[1] - a[1]);
+      const categoryColorMap = {};
+      sortedCategories.forEach(([cat], i) => {
+        categoryColorMap[cat] = CHART_COLORS[i % CHART_COLORS.length];
+      });
 
       results.forEach(tx => {
         const itemClone = tmplItem.content.cloneNode(true);
         const card = cards.find(c => c.id === tx.card_id);
         const itemEl = itemClone.querySelector('.transaction-item');
 
-        // 店舗名 & 確定/未確定バッジ
         itemClone.querySelector('.shop-name').textContent = (tx.shop || '（購入先未設定）') + ' ';
 
         const badgeEl = itemClone.querySelector('.badge');
@@ -2811,10 +3032,28 @@ function updateSearch() {
           badgeEl.textContent = '未確定';
         }
 
-        // 利用日・カード名・カテゴリ
-        itemClone.querySelector('.date').textContent = `${formatDate(tx.used_date)} ${card ? card.name : ''} ${tx.category || ''}`;
+        const badgeCategoryEl = itemClone.querySelector('.badge-category');
+        const catKey = tx.category || '未分類';
+        if (tx.category && badgeCategoryEl) {
+          badgeCategoryEl.textContent = tx.category;
+          badgeCategoryEl.style.display = 'inline-block';
+          badgeCategoryEl.style.fontSize = '10px';
+          badgeCategoryEl.style.padding = '2px 6px';
+          badgeCategoryEl.style.borderRadius = '4px';
+          badgeCategoryEl.style.marginLeft = '4px';
+          
+          const assignedColor = categoryColorMap[catKey] || '#cccccc';
+          badgeCategoryEl.style.backgroundColor = assignedColor;
+          badgeCategoryEl.style.color = '#ffffffeb'; 
+        } else if (badgeCategoryEl) {
+          badgeCategoryEl.style.display = 'none';
+        }
 
-        // 詳細メモ（30文字カット処理）
+        const dateCategoryEl = itemClone.querySelector('.date-category') || itemClone.querySelector('.date');
+        if (dateCategoryEl) {
+          dateCategoryEl.textContent = `${formatDate(tx.used_date)} ${card ? card.name : ''}`;
+        }
+
         if (tx.detail) {
           const detailEl = itemClone.querySelector('.tx-detail');
           const shortDetail = tx.detail.length > 30 ? tx.detail.substring(0, 30) + '…' : tx.detail;
@@ -2822,10 +3061,8 @@ function updateSearch() {
           detailEl.style.display = 'block';
         }
 
-        // 金額
         itemClone.querySelector('.transaction-amount').textContent = formatAmount(tx.amount);
 
-        // クリックイベント設定（編集画面を開く）
         itemEl.addEventListener('click', () => {
           openEditTransaction(tx.id);
         });
@@ -2839,9 +3076,85 @@ function updateSearch() {
 }
 
 function clearSearch() {
-  searchState = { keyword: '', cardId: '', yearMonth: '', amountMin: '', amountMax: '' };
+  searchState = {
+    keyword: '',
+    cardId: '',
+    category: '',      
+    shop: '',          
+    tranYearMonth: '', 
+    yearMonth: '',
+    amountMin: '',
+    amountMax: '',
+    sortKey: 'created_at', 
+    sortOrder: 'desc'
+  };
   renderPage();
 }
+
+
+// ==========================================
+// 共通のソート関数（どこからでも使い回せる決定版）
+// ==========================================
+function sortTransactions(transactionsArray, sortKey, sortOrder) {
+  return [...transactionsArray].sort((a, b) => {
+    let valA, valB;
+
+    switch (sortKey) {
+      case 'created_at':
+        valA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        valB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        break;
+      case 'used_date':
+      case 'dueDate':
+      case 'usedDate':
+        valA = a.used_date ? new Date(a.used_date).getTime() : 0;
+        valB = b.used_date ? new Date(b.used_date).getTime() : 0;
+        break;
+      case 'amount':
+        valA = Number(a.amount) || 0;
+        valB = Number(b.amount) || 0;
+        break;
+      case 'shop':
+      case 'name':
+        valA = a.shop || '';
+        valB = b.shop || '';
+        // 文字列比較（localeCompare）
+        return sortOrder === 'asc' 
+          ? valA.localeCompare(valB, 'ja') 
+          : valB.localeCompare(valA, 'ja');
+      default:
+        valA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        valB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    }
+
+    // 数値やタイムスタンプの比較
+    if (sortOrder === 'asc') {
+      return valA > valB ? 1 : valA < valB ? -1 : 0;
+    } else {
+      return valA < valB ? 1 : valA > valB ? -1 : 0;
+    }
+  });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ==================== 削除済み一覧 ====================
 let deletedActiveTab = 'cards';

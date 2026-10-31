@@ -768,7 +768,6 @@
 <template id="tmpl-search">
   <div>
     <h2 class="page-title">検索</h2>
-
     <!-- 検索フォーム -->
     <div class="card search-form-card">
       <div class="form-group">
@@ -784,12 +783,15 @@
       </div>
       <div class="form-group">
         <label class="form-label">カテゴリ</label>
-        <input class="form-input" id="search-category" type="text" placeholder="例：食費、サブスクリプション">
+        <input class="form-input" id="search-category" type="text" placeholder="例：食費" autocomplete="off">
+        <div class="suggest-list" id="category-suggest"></div>
       </div>
             <div class="form-group">
         <label class="form-label">購入先</label>
-        <input class="form-input" id="search-shop" type="text" placeholder="例：Amazon、楽天市場">
+        <input class="form-input" id="search-shop" type="text" placeholder="例：Amazon" autocomplete="off">
+        <div class="suggest-list" id="shop-suggest"></div>
       </div>
+
       <div class="search-yearmonth">
       <div class="form-group">
         <label class="form-label">利用年月</label>
@@ -815,8 +817,24 @@
       </button>
     </div>
 
+    
+
+<div style="display: flex ;padding: 8px; align-items: center; gap: 8px;">
     <!-- 検索結果件数 -->
     <div class="search-count"></div>
+    <!-- ソート項目選択 -->
+<select id="home-sort-key">
+      <option value="created_at">作成日</option>
+      <option value="used_date">利用日</option>
+    <option value="dueDate">引き落とし日</option>
+      <option value="name">カード名</option>
+  <option value="amount">金額</option>
+</select>
+<!-- 昇順/降順切替ボタン（ついでにIDをつけておく） -->
+<button id="home-sort-order-btn" class="btn btn-ghost" title="昇順/降順切り替え">
+  <i class="ph-bold ph-sort-descending" id="home-sort-order-icon"></i> <span id="home-sort-order-text">昇順</span>
+</button>
+  </div>
 
     <!-- 検索結果コンテナ -->
     <div id="search-results">
@@ -834,9 +852,10 @@
       <div class="shop">
         <span class="shop-name"></span>
         <span class="badge"></span>
+        <span class="badge-category"></span>
       </div>
-      <div class="date"></div>
-      <div class="tx-detail" style="display:none"></div>
+      <div class="date-category tx-meta-text"></div>
+      <div class="tx-detail tx-meta-text" style="display:none"></div>
     </div>
     <div class="transaction-amount"></div>
   </div>

@@ -415,7 +415,7 @@ select.form-input {
   padding: 6px 0; /* 高さを限界まで狭くして情報密度をアップ */
   border-bottom: 1px solid var(--gray-200);
   cursor: pointer;
-
+  box-sizing: border-box;
 }
  
 .transaction-item:last-child {
@@ -473,7 +473,8 @@ select.form-input {
 /* ==========================================
    バッジのミニマル化
    ========================================== */
-.badge {
+.badge,
+badge-category {
   display: inline-flex;
   align-items: center;
   padding: 0px 5px; /* 上下左右の余白を削る */
@@ -482,6 +483,7 @@ select.form-input {
   font-weight: 500;
   height: 16px;
   line-height: 1;
+  white-space: nowrap;
 }
  
 .badge-reserved {
@@ -1007,11 +1009,7 @@ select.form-input {
   width: 100%;
   box-sizing: border-box;
 }
- 
-.transaction-item {
-  width: 100%;
-  box-sizing: border-box;
-}
+
  
 /* ホーム画面カードグループ幅統一 */
 #main-content .card {
@@ -1029,7 +1027,7 @@ select.form-input {
   border-radius: 99px;
   font-size: 14px;
   font-weight: 400;
-  z-index: 999;
+  z-index: 9999;
   opacity: 0;
   transition: opacity 0.3s ease;
   white-space: nowrap;
@@ -1071,7 +1069,7 @@ select.form-input {
   border-radius: 8px;
   max-height: 160px;
   overflow-y: auto;
-  z-index: 999;  /* ← 200より高くする */
+  z-index: 9999;  /* ← 200より高くする */
   box-shadow: var(--shadow);
   display: none;
 }
@@ -1929,35 +1927,55 @@ select.form-input {
 
 /* ---------- 検索 ---------- */
 .search-form-card {
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
-
 .search-yearmonth {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 .search-yearmonth .form-group {
   flex: 1;
 }
 .search-amount-row {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 .search-amount-row .form-group {
   flex: 1;
 }
 .search-count {
-  font-size: 13px;
+  font-size: 10px;
   color: var(--gray-400);
   margin-bottom: 8px;
 }
 /* 検索結果の詳細（display は HTML 側で制御） */
+
+.transaction-item.search-item {
+display: flex;
+  justify-content: space-between;
+  align-items: center; 
+  padding: 10px 14px; /* ★ 上下だけでなく左右にもしっかりパディング（余白）を持たせる */
+  border-bottom: 1px solid var(--gray-200);
+  cursor: pointer;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 8px; /* カード感が出るように角丸があると綺麗です */
+  margin-bottom: 8px; /* カード同士の隙間 */
+}
+
+.transaction-item.search-item:last-child {
+  border-bottom: none;
+}
+
 .search-item .tx-detail {
-  font-size: 12px;
+  display:none;
+  font-size: 10px;
   color: var(--gray-400);
-  margin-top: 2px;
+  /* margin-top: 2px; */
   width:100%
 }
+
+
 
 
 
