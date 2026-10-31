@@ -2692,6 +2692,32 @@ function renderSearch() {
         openEditTransaction(tx.id);
       });
 
+      // ==================== イベント登録 ====================
+
+// キーワード入力
+clone.querySelector('#search-keyword')
+  .addEventListener('input', updateSearch);
+
+// カード選択
+clone.querySelector('#search-card')
+  .addEventListener('change', updateSearch);
+
+// 引き落とし年月
+clone.querySelector('#search-yearmonth')
+  .addEventListener('change', updateSearch);
+
+// 金額下限
+clone.querySelector('#search-amount-min')
+  .addEventListener('input', updateSearch);
+
+// 金額上限
+clone.querySelector('#search-amount-max')
+  .addEventListener('input', updateSearch);
+
+// 条件クリア
+clone.querySelector('#btn-clear-search')
+  .addEventListener('click', clearSearch);
+
       resultsList.appendChild(itemClone);
     });
   }

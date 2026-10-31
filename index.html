@@ -165,7 +165,7 @@
         <i class="ph-bold ph-arrows-in"></i> 全て閉じる
       </button>
 
-<!-- ソート項目選択（onchange を削除） -->
+<!-- ソート項目選択 -->
 <select id="home-sort-key">
     <option value="dueDate">引き落とし日</option>
   <option value="amount">金額</option>
@@ -760,6 +760,10 @@
   </div>
 </template>
 
+
+
+
+
 <!-- 検索画面の土台 -->
 <template id="tmpl-search">
   <div>
@@ -769,26 +773,41 @@
     <div class="card search-form-card">
       <div class="form-group">
         <label class="form-label">キーワード（購入先・カテゴリ・詳細）</label>
-        <input class="form-input" id="search-keyword" type="text" placeholder="例：Amazon、食費" oninput="updateSearch()">
+        <input class="form-input" id="search-keyword" type="text" placeholder="例：Amazon、食費">
       </div>
+
       <div class="form-group">
         <label class="form-label">カード</label>
-        <select class="form-input" id="search-card" onchange="updateSearch()">
+        <select class="form-input" id="search-card" >
           <option value="">すべて</option>
         </select>
       </div>
       <div class="form-group">
+        <label class="form-label">カテゴリ</label>
+        <input class="form-input" id="search-category" type="text" placeholder="例：食費、サブスクリプション">
+      </div>
+            <div class="form-group">
+        <label class="form-label">購入先</label>
+        <input class="form-input" id="search-shop" type="text" placeholder="例：Amazon、楽天市場">
+      </div>
+      <div class="search-yearmonth">
+      <div class="form-group">
+        <label class="form-label">利用年月</label>
+        <input class="form-input" id="search-tranyearmonth" type="month" >
+      </div>
+      <div class="form-group">
         <label class="form-label">引き落とし年月</label>
-        <input class="form-input" id="search-yearmonth" type="month" onchange="updateSearch()">
+        <input class="form-input" id="search-yearmonth" type="month" >
+      </div>
       </div>
       <div class="search-amount-row">
         <div class="form-group">
           <label class="form-label">金額（下限）</label>
-          <input class="form-input" id="search-amount-min" type="number" placeholder="例：1000" oninput="updateSearch()">
+          <input class="form-input" id="search-amount-min" type="number" placeholder="例：1000">
         </div>
         <div class="form-group">
           <label class="form-label">金額（上限）</label>
-          <input class="form-input" id="search-amount-max" type="number" placeholder="例：10000" oninput="updateSearch()">
+          <input class="form-input" id="search-amount-max" type="number" placeholder="例：10000">
         </div>
       </div>
       <button id="btn-clear-search" class="btn btn-ghost btn-full" >
@@ -822,6 +841,11 @@
     <div class="transaction-amount"></div>
   </div>
 </template>
+
+
+
+
+
 
 <!-- 削除済み一覧画面の土台 -->
 <template id="tmpl-deleted">
